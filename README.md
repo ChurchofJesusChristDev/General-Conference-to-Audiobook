@@ -8,7 +8,7 @@ Convert the official General Conference website listing into an unofficial Audio
 2. Open Chrome's Menu => More Tools => Developer Tools (the JavaScript Console Inspector)
 3. Copy and Paste this into the Console:
    ```js
-      var talks = [];
+   var talks = [];
 
    async function scrapeTalk($li) {
        // var $li = $$li[0];
