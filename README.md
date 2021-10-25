@@ -1,10 +1,10 @@
-# General-Conference-to-Audiobook
+# Download General Conference (and convert to Audiobook)
 
 Convert the official General Conference website listing into an unofficial Audiobook for easy listening on any device, in any app.
 
 1. Go to any of the General Conference listings (from April 1971 to Present). For example:
-  - https://www.churchofjesuschrist.org/study/general-conference/2021/10
-  - https://www.churchofjesuschrist.org/study/general-conference/1971/04
+   - https://www.churchofjesuschrist.org/study/general-conference/2021/10
+   - https://www.churchofjesuschrist.org/study/general-conference/1971/04
 2. Open Chrome's Menu => More Tools => Developer Tools (the JavaScript Console Inspector)
 3. Copy and Paste this into the Console:
    ```js
