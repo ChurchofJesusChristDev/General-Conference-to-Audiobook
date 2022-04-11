@@ -14,7 +14,9 @@ Convert the official General Conference website listing into an unofficial Audio
    script.src="https://churchofjesuschristdev.github.io/General-Conference-to-Audiobook/general-conference-talks.js";
    document.body.append(script);
    ```
-4. Copy and paste the curl commands into Terminal.app
-5. Use AudioBookBinder from the App store to convert from mp3 into m4b
+4. Download each talk by either:
+     - Painstakingly download each talk with the provided links
+     - Or copy and paste the `curl` commands into Terminal.app
+6. Use AudioBookBinder from the App store to convert from several `mp3`s into a single `m4b`
 
 Enjoy with **Bound** (via its Web Uploader) on iOS, or any other audiobook app on any other device.
