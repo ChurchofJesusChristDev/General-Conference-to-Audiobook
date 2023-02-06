@@ -12,7 +12,9 @@ https://newsroom.churchofjesuschrist.org/article/october-2022-general-conference
 1. Go to any of the General Conference listings (from April 1971 to Present). **For example**:
    - https://www.churchofjesuschrist.org/study/general-conference/2021/10
    - https://www.churchofjesuschrist.org/study/general-conference/1971/04
-2. Open Chrome's `Menu => More Tools => Developer Tools` (the JavaScript Console Inspector)
+2. Open Chrome's `Menu => More Tools => Developer Tools` \
+   (the JavaScript Console Inspector)
+   <img width="954" alt="Screenshot 2023-02-06 at 6 19 00 AM" src="https://user-images.githubusercontent.com/122831/216982130-fa51eea2-f5d9-4a4b-9ee7-5f6c36c8d158.png">
 3. Copy and Paste this script into the Console:
    ```js
    var script = document.createElement('script');
