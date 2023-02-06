@@ -49,15 +49,15 @@ function parseTalk($session, $talk, talkNumber, domListIndex) {
     talkNumberStr = talkNumberStr.padStart(2, "0");
 
     let talk = {
-        $session: $session,
-        $talk: $talk,
-        _domListIndex: domListIndex,
         session_number: sessionNumberStr,
         talk_number: talkNumberStr,
         title: title,
         speaker: speaker,
         description: description,
         talk_url: url,
+        _domListIndex: domListIndex,
+        $session: $session,
+        $talk: $talk,
     };
     console.info(
         `✅ was able to parse talk ${$session.index}.${talkNumber}'s description:`,
@@ -189,7 +189,6 @@ async function main() {
         sessionTalkNumber += 1;
         let talk = parseTalk($session, $card, sessionTalkNumber, i);
 
-        talk.$card = $card;
         talks.push(talk);
         console.info("");
     });
@@ -225,8 +224,8 @@ async function main() {
         curls.push(curl);
 
         let downloadHtml = `<h6 style="font-size: 8pt;">${talk.session_number}.${talk.talk_number} Download <a href="${talk.mp3Url}" target="_blank" download="${talk.filename}">"${talk.title}" by ${talk.speaker} ⬇️</a></h6>`;
-        talk.$card.insertAdjacentHTML("beforeend", downloadHtml);
-        talk.$card.children[0].remove();
+        talk.$talk.insertAdjacentHTML("beforeend", downloadHtml);
+        talk.$talk.children[0].remove();
     }
     let sh = curls.join("\n");
 
