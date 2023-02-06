@@ -21,10 +21,12 @@ https://newsroom.churchofjesuschrist.org/article/october-2022-general-conference
    script.src="https://churchofjesuschristdev.github.io/General-Conference-to-Audiobook/general-conference-talks.js";
    document.body.append(script);
    ```
-   <img width="848" alt="Screenshot 2023-02-06 at 6 12 23 AM" src="https://user-images.githubusercontent.com/122831/216980391-d62e62cc-31b1-4540-b4d3-349d4f4437c0.png">
+   <img width="954" alt="Screenshot 2023-02-06 at 6 22 58 AM" src="https://user-images.githubusercontent.com/122831/216982726-f9056e2b-3daf-4c86-9263-c67bf6968804.png">
+   <img width="954" alt="Screenshot 2023-02-06 at 6 23 48 AM" src="https://user-images.githubusercontent.com/122831/216982733-d165a4c0-2d49-4909-b25d-2dc00cbb82b1.png">
 4. Download each talk by either:
      - Painstakingly download each talk with the provided links
      - Or copy and paste the `curl` commands into `Terminal.app`
+   <img width="848" alt="Screenshot 2023-02-06 at 6 12 23 AM" src="https://user-images.githubusercontent.com/122831/216980391-d62e62cc-31b1-4540-b4d3-349d4f4437c0.png">
 
 ## Convert to AudioBook
 
