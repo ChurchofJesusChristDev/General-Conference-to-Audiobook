@@ -52,4 +52,5 @@ you might enjoy the community recordings put together by LibriVox Volunteers:
 ## Manuals as AudioBooks
 
 The church has some official audiobooks for the various manuals and study materials:
+- https://www.churchofjesuschrist.org/media/publications?lang=eng
 - https://www.churchofjesuschrist.org/media-library/audio?lang=mlg
