@@ -220,14 +220,17 @@ async function main() {
             mp3Url,
             `${talk.session_number}-${talk.talk_number}`
         );
-        let curl = `curl -fL -A 'ChJCDev/1.0' -o "${filename}" '${mp3Url}'`;
+        let curl = [
+            `echo Downloading ${filename} ...`,
+            `curl -fsSL -A 'ChJCDev/1.0' -o "${filename}" '${mp3Url}'`,
+        ].join("\n");
         curls.push(curl);
 
         let downloadHtml = `<h6 style="font-size: 8pt;">${talk.session_number}.${talk.talk_number} Download <a href="${talk.mp3Url}" target="_blank" download="${talk.filename}">"${talk.title}" by ${talk.speaker} ⬇️</a></h6>`;
         talk.$talk.insertAdjacentHTML("beforeend", downloadHtml);
         talk.$talk.children[0].remove();
     }
-    let sh = curls.join("\n");
+    let sh = curls.join("\n\n");
 
     console.log(talks);
     console.info("");
