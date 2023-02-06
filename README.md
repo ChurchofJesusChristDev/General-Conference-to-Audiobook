@@ -40,3 +40,9 @@ https://newsroom.churchofjesuschrist.org/article/october-2022-general-conference
 3. Enjoy with **Bound** (via its Web Uploader) on iOS, or any other audiobook app on any other device
    <img width="954" alt="Screenshot 2023-02-06 at 6 27 55 AM" src="https://user-images.githubusercontent.com/122831/216983701-ae97f730-65df-472c-b748-57017f499bb5.png">
    <img width="320" alt="Screenshot 2023-02-06 at 6 28 15 AM" src="https://user-images.githubusercontent.com/122831/216983747-32f916da-bf56-4ad2-bfbc-a6367d5c03f9.jpeg">
+
+## Also of Interest: LibriVox Book of Mormon
+
+If you'd like a little more variety in the voice acting of the Book of Mormon, \
+you might enjoy the community recordings put together by LibriVox Volunteers:
+- https://librivox.org/the-book-of-mormon-by-joseph-smith-jr/
