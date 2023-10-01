@@ -1,9 +1,11 @@
 # Download General Conference <br> (and convert to Audiobook)
 
-**Updated** for the April 2022 General Conference
-
 How to convert the official General Conference website listing into an \
 unofficial Audiobook for easy listening on any device, in any app.
+
+**UPDATES**
+- October 2023 - no changes, still works as-is
+- April 2022 - updated selectors for new site
 
 ## Download from ChurchOfJesusChrist.org
 
