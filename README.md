@@ -7,8 +7,6 @@ unofficial Audiobook for easy listening on any device, in any app.
 
 ## Download from ChurchOfJesusChrist.org
 
-https://newsroom.churchofjesuschrist.org/article/october-2022-general-conference-news-announcements
-
 1. Go to any of the General Conference listings (from April 1971 to Present). **For example**:
    - https://www.churchofjesuschrist.org/study/general-conference/2021/10
    - https://www.churchofjesuschrist.org/study/general-conference/1971/04
