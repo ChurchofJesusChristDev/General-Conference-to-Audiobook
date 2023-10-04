@@ -4,9 +4,9 @@ set -u
 
 my_dir="$(pwd)"
 
-echo Creating directory "${my_dir}/General Conference October 2023/"
-mkdir -p './General Conference October 2023/'
-cd './General Conference October 2023/'
+echo Creating directory "${my_dir}/October 2023 General Conference/"
+mkdir -p './October 2023 General Conference/'
+cd './October 2023 General Conference/'
 
 echo Downloading 1-01_2023-10-1010-david-a-bednar-32k-eng.mp3 ...
 curl -fsSL -A 'ChJCDev/1.0' -o "1-01_2023-10-1010-david-a-bednar-32k-eng.mp3" 'https://media2.ldscdn.org/assets/general-conference/october-2023-general-conference/2023-10-1010-david-a-bednar-32k-eng.mp3'
@@ -111,5 +111,5 @@ echo Downloading Cover Art
 curl -fsSL -A 'ChJCDev/1.0' -o "jesus_christ-GC-2023-official-eng.jpeg" 'https://newsroom.churchofjesuschrist.org/media/960x540/jesus_christ-GC-2023-official-eng.jpeg'
 
 echo ''
-echo Downloaded to "${my_dir}/General Conference October 2023/"
+echo Downloaded to "${my_dir}/October 2023 General Conference/"
 echo ''
