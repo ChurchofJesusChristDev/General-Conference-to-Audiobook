@@ -107,6 +107,9 @@ curl -fsSL -A 'ChJCDev/1.0' -o "5-06_2023-10-5060-christophe-g-giraud-carrier-32
 echo Downloading 5-07_2023-10-5070-russell-m-nelson-32k-eng.mp3 ...
 curl -fsSL -A 'ChJCDev/1.0' -o "5-07_2023-10-5070-russell-m-nelson-32k-eng.mp3" 'https://media2.ldscdn.org/assets/general-conference/october-2023-general-conference/2023-10-5070-russell-m-nelson-32k-eng.mp3'
 
+echo Downloading Cover Art
+curl -fsSL -A 'ChJCDev/1.0' -o "jesus_christ-GC-2023-official-eng.jpeg" 'https://newsroom.churchofjesuschrist.org/media/960x540/jesus_christ-GC-2023-official-eng.jpeg'
+
 echo ''
 echo Downloaded to "${my_dir}/General Conference October 2023/"
 echo ''
