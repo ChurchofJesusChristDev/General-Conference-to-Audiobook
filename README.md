@@ -7,6 +7,10 @@ unofficial Audiobook for easy listening on any device, in any app.
 - October 2023 - no changes, still works as-is
 - April 2022 - updated selectors for new site
 
+## Download Pre-Converted Files
+
+- [October 2023 General Conference.m4b](https://github.com/ChurchofJesusChristDev/General-Conference-as-Audiobook/raw/main/October%202023%20General%20Conference.m4b)
+
 ## Download from ChurchOfJesusChrist.org
 
 1. Go to any of the General Conference listings (from April 1971 to Present). **For example**:
