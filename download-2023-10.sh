@@ -2,6 +2,9 @@
 set -e
 set -u
 
+my_dir="$(pwd)"
+
+echo Creating directory "${my_dir}/General Conference October 2023/"
 mkdir -p './General Conference October 2023/'
 cd './General Conference October 2023/'
 
@@ -103,3 +106,7 @@ curl -fsSL -A 'ChJCDev/1.0' -o "5-06_2023-10-5060-christophe-g-giraud-carrier-32
 
 echo Downloading 5-07_2023-10-5070-russell-m-nelson-32k-eng.mp3 ...
 curl -fsSL -A 'ChJCDev/1.0' -o "5-07_2023-10-5070-russell-m-nelson-32k-eng.mp3" 'https://media2.ldscdn.org/assets/general-conference/october-2023-general-conference/2023-10-5070-russell-m-nelson-32k-eng.mp3'
+
+echo ''
+echo Downloaded to "${my_dir}/General Conference October 2023/"
+echo ''
