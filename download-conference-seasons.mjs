@@ -217,12 +217,12 @@ for (const period of selectedPeriods) {
 console.log(`Selected seasons: ${selectedPeriods.join(", ")}`);
 console.log(`Downloading ${jobs.length} items for ${firstPeriod} through ${lastPeriod} with concurrency ${concurrency}`);
 let next = 0;
-let completed = 0;
+let started = 0;
 function itemLabel(job) {
   return `${job.period}${job.episode ? ` #${job.episode}` : ""}`;
 }
 function itemHeader(job) {
-  console.log(`${completed + 1}/${jobs.length} ${itemLabel(job)} - ${job.title}${job.speaker ? ` - ${job.speaker}` : ""}`);
+  console.log(`${++started}/${jobs.length} ${itemLabel(job)} - ${job.title}${job.speaker ? ` - ${job.speaker}` : ""}`);
 }
 function itemStatus(action) {
   return action === "exists" ? "OK (existing)" : "OK";
@@ -258,7 +258,6 @@ async function worker() {
       itemHeader(job);
       await mkdir(job.directory, { recursive: true });
       await Promise.all(job.files.map((file) => processFile(job, file)));
-      console.log(`    progress ${++completed}/${jobs.length}`);
     } catch (error) {
       failedPeriods.add(job.period);
       if (!(await directoryHasMedia(job.directory))) await rm(job.directory, { recursive: true, force: true });
@@ -268,7 +267,7 @@ async function worker() {
   }
 }
 await Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, worker));
-await runVisible(process.execPath, ["./generate-conference-sidecars.mjs", envPath, talksPath, firstPeriod, lastPeriod]);
+await runVisible(process.execPath, ["./generate-conference-sidecars.mjs", envPath, talksPath, firstPeriod, lastPeriod, mediaLinksPath]);
 for (const period of selectedPeriods) {
   if (failedPeriods.has(period)) continue;
   const code = folderCode(period);

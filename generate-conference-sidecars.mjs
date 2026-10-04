@@ -10,6 +10,7 @@ const envPath = process.argv[2] ?? "./oneal.env";
 const metadataPath = process.argv[3] ?? "./data/all/metadata.tsv";
 const firstPeriod = process.argv[4] ?? "1971-04";
 const lastPeriod = process.argv[5] ?? "9999-10";
+const mediaLinksPath = process.argv[6] ?? "./data/media-links.tsv";
 const env = parseEnv(await readFile(envPath, "utf8"));
 const root = expandHome(env.GENERAL_CONFERENCE_DOWNLOAD_PATH);
 const policyKey = env.GENERAL_CONFERENCE_BRIGHTCOVE_POLICY_KEY;
@@ -34,6 +35,7 @@ function parseTSV(text) {
   return lines.map((line) => Object.fromEntries(line.split("\t").map((value, i) => [headers[i], value])));
 }
 function safeName(value) { return value.replace(/[/:*?"<>|\\]+/g, "-").replace(/\s+/g, " ").trim(); }
+function sidecarLog(label, name, action) { console.log(`${label}: ${name} ${action}`); }
 function xml(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function folderCode(period) { return period.replace("-", ""); }
 function seasonCode(period) { return period.replace("-", ""); }
@@ -137,15 +139,25 @@ async function fetchBinary(url) {
   if (!response.ok) throw new Error(`${response.status} ${url}`);
   return Buffer.from(await response.arrayBuffer());
 }
+async function fetchText(url) {
+  if (!url) return "";
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${response.status} ${url}`);
+  return response.text();
+}
 
 const metadata = parseTSV(await readFile(metadataPath, "utf8"));
+let mediaLinks = [];
+try { mediaLinks = parseTSV(await readFile(mediaLinksPath, "utf8")); }
+catch (error) { if (error.code !== "ENOENT") throw error; }
+const mediaByURL = new Map(mediaLinks.map((row) => [row.page_url, row]));
 const episodes = new Map();
 const periods = new Set(metadata.filter((record) => record.period >= firstPeriod && record.period <= lastPeriod).map((record) => record.period));
 await mkdir(root, { recursive: true });
 let action = await writeIfChanged(`${root}/tvshow.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<tvshow><title>General Conference</title><sorttitle>General Conference</sorttitle><genre>Religious</genre></tvshow>\n`);
-console.log(`sidecar ${action} tvshow.nfo`);
+sidecarLog("General Conference", "tvshow.nfo", action);
  action = await writeIfChanged(`${root}/.plexmatch`, "title=General Conference\ntype=show\n");
-console.log(`sidecar ${action} .plexmatch`);
+sidecarLog("General Conference", ".plexmatch", action);
 
 for (const period of [...periods].sort()) {
   const folder = folderCode(period);
@@ -154,22 +166,23 @@ for (const period of [...periods].sort()) {
   const label = month === "04" ? `April ${year} General Conference` : `October ${year} General Conference`;
   const seasonDirectory = `${root}/Season ${folder}`;
   if (!(await hasMedia(seasonDirectory))) {
-    console.log(`sidecar skipped Season ${code} (no media)`);
+    sidecarLog(`Season ${code}`, "skipped (no media)", "");
     continue;
   }
   await mkdir(seasonDirectory, { recursive: true });
   const seasonRecord = metadata.find((item) => item.period === period && item.kind !== "season");
+  const seasonLinks = seasonRecord ? mediaByURL.get(seasonRecord.page_url) ?? {} : {};
   let seasonMedia = {};
   if (seasonRecord) {
     try { seasonMedia = await pageMedia(seasonRecord.page_url); }
     catch (error) { console.warn(`season artwork lookup failed ${period}: ${error.message}`); }
   }
-  action = await ensureFetched("./data/artwork/season.jpg", `${seasonDirectory}/poster.jpg`, () => fetchBinary(seasonMedia.seasonPoster));
-  console.log(`sidecar ${action} Season ${code}/poster.jpg`);
+  action = await ensureFetched("./data/artwork/season.jpg", `${seasonDirectory}/poster.jpg`, () => fetchBinary(seasonLinks.season_artwork_url || seasonMedia.seasonPoster));
+  sidecarLog(`Season ${code}`, "poster.jpg", action);
   action = await writeIfChanged(`${seasonDirectory}/season.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<season><title>${xml(label)}</title><seasonnumber>${code}</seasonnumber><year>${year}</year></season>\n`);
-  console.log(`sidecar ${action} Season ${code}/season.nfo`);
+  sidecarLog(`Season ${code}`, "season.nfo", action);
   action = await writeIfChanged(`${seasonDirectory}/.plexmatch`, `title=${label}\ntype=season\nseason=${code}\n`);
-  console.log(`sidecar ${action} Season ${code}/.plexmatch`);
+  sidecarLog(`Season ${code}`, ".plexmatch", action);
 
   for (const record of metadata.filter((item) => item.period === period && item.kind !== "season")) {
     const kind = record.kind ?? "talk";
@@ -178,6 +191,7 @@ for (const period of [...periods].sort()) {
     let episode = "";
     let directory = seasonDirectory;
     const id = pageID(record.page_url);
+    const sidecarLabel = `${period}${kind === "talk" ? ` #${String((episodes.get(period) ?? 0) + 1).padStart(2, "0")}` : ""}`;
     if (kind === "talk") {
       const number = (episodes.get(period) ?? 0) + 1;
       episodes.set(period, number);
@@ -185,21 +199,25 @@ for (const period of [...periods].sort()) {
       stem = `General Conference - S${code}E${episode} - ${safeName(record.title)}`;
       directory = `${seasonDirectory}/${stem}`;
       if (!(await hasMedia(directory))) {
-        console.log(`${period}\n  ${record.title} - skipped (no media)`);
+        sidecarLog(sidecarLabel, "skipped (no media)", "");
         continue;
       }
       await mkdir(directory, { recursive: true });
+      const links = mediaByURL.get(record.page_url) ?? {};
       let media = {};
       try { media = await pageMedia(record.page_url); }
       catch (error) { console.warn(`media lookup failed ${record.page_url}: ${error.message}`); }
       action = await ensureFetched(`./data/text/${id}.md`, `${directory}/${stem}.md`, () => fetchMarkdown(record.page_url, record.title));
-      console.log(`    .md - ${action}`);
-      action = await ensureFetched(`./data/subtitles/${id}.en.vtt`, `${directory}/${stem}.vtt`, () => fetchSubtitle(media.videoID));
-      console.log(`    .vtt - ${action}`);
-      action = await ensureFetched(`./data/artwork/${id}.jpg`, `${directory}/${stem}.jpg`, () => fetchBinary(media.poster));
-      console.log(`    .jpg - ${action}`);
+      sidecarLog(sidecarLabel, ".md", action);
+      action = await ensureFetched(`./data/subtitles/${id}.en.vtt`, `${directory}/${stem}.vtt`, async () => {
+        const subtitleURL = links.subtitle_urls?.split(" | ")[0] || "";
+        return subtitleURL ? fetchText(subtitleURL) : fetchSubtitle(media.videoID);
+      });
+      sidecarLog(sidecarLabel, ".vtt", action);
+      action = await ensureFetched(`./data/artwork/${id}.jpg`, `${directory}/${stem}.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
+      sidecarLog(sidecarLabel, ".jpg", action);
       action = await writeIfChanged(`${directory}/.plexmatch`, `title=${record.title}\ntype=episode\nseason=${code}\nepisode=${episode}\n`);
-      console.log(`    .plexmatch - ${action}`);
+      sidecarLog(sidecarLabel, ".plexmatch", action);
     } else {
       directory = `${seasonDirectory}/Sessions`;
       if (!(await hasMedia(directory))) {
@@ -210,7 +228,7 @@ for (const period of [...periods].sort()) {
     }
     const nfo = `<?xml version="1.0" encoding="UTF-8"?>\n<episodedetails><title>${xml(record.title)}</title><showtitle>General Conference</showtitle><season>${code}</season>${episode ? `<episode>${episode}</episode>` : ""}<plot>${xml(record.description)}</plot>${record.speaker ? `<actor><name>${xml(record.speaker)}</name></actor>` : ""}</episodedetails>\n`;
     action = await writeIfChanged(`${directory}/episode.nfo`, nfo);
-    console.log(`    .nfo - ${action}`);
+    sidecarLog(sidecarLabel, ".nfo", action);
     if (kind !== "talk") {
       action = await copyIfPresent(`./data/text/${id}.md`, `${directory}/${stem}.md`);
       console.log(`    .md - ${action}`);

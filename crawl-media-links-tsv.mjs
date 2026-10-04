@@ -8,7 +8,7 @@ const refresh = process.argv.includes("--refresh");
 const firstPeriod = process.argv[4] ?? "0000-00";
 const lastPeriod = process.argv[5] ?? "9999-99";
 const headers = { "user-agent": "General-Conference-to-Audiobook/1.0" };
-const fields = ["period", "page_url", "audio_url", "video_360p", "video_720p", "video_1080p", "video_streams", "asset_id", "video_id"];
+const fields = ["period", "page_url", "audio_url", "video_360p", "video_720p", "video_1080p", "video_streams", "asset_id", "video_id", "season_artwork_url", "episode_artwork_url", "subtitle_urls"];
 
 function parseTSV(text) {
   const lines = text.trimEnd().split("\n");
@@ -43,6 +43,9 @@ function extract(html, talk) {
     video_streams: sources.join(" | "),
     asset_id: attribute(videoTag, "data-assetId"),
     video_id: attribute(videoTag, "data-video-id"),
+    season_artwork_url: page.meta?.ogTagImageUrl ?? "",
+    episode_artwork_url: attribute(videoTag, "poster") || attribute(videoTag, "thumbnail"),
+    subtitle_urls: "",
   };
 }
 

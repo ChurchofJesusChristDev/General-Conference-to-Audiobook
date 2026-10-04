@@ -18,7 +18,7 @@ const records = data.records.map((record) => ({
 }));
 
 let metadata = "kind\tperiod\tdecade\ttitle\tspeaker\tdescription\tpage_url\tasset_id\tvideo_id\n";
-let urls = "kind\tperiod\tpage_url\taudio_url\tvideo_360p\tvideo_720p\tvideo_1080p\tvideo_streams\tsubtitle_urls\n";
+let urls = "kind\tperiod\tpage_url\taudio_url\tvideo_360p\tvideo_720p\tvideo_1080p\tvideo_streams\tsubtitle_urls\tseason_artwork_url\tepisode_artwork_url\n";
 for (const record of records) {
   metadata += row([
     record.kind, record.period, record.decade, record.title, record.speaker,
@@ -33,6 +33,8 @@ for (const record of records) {
     videos[360] ?? "", videos[720] ?? "", videos[1080] ?? "",
     record.video_streams.join(" | "),
     record.subtitles?.map((track) => track.url).join(" | ") ?? "",
+    record.artwork?.season ?? "",
+    record.artwork?.episode || record.artwork?.thumbnail || "",
   ]);
 }
 
