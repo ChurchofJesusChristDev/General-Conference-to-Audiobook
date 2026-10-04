@@ -12,7 +12,6 @@ const lastPeriod = options.end ?? "9999-10";
 const env = parseEnv(await readFile(envPath, "utf8"));
 const root = expandHome(env.GENERAL_CONFERENCE_DOWNLOAD_PATH);
 const videoQuality = env.GENERAL_CONFERENCE_VIDEO_QUALITY ?? "720p";
-const audioFormat = env.GENERAL_CONFERENCE_AUDIO_FORMAT ?? "m4a";
 const concurrency = Number(process.env.CONFERENCE_DOWNLOAD_CONCURRENCY ?? "4");
 
 if (!root) throw new Error("GENERAL_CONFERENCE_DOWNLOAD_PATH is required");
@@ -196,11 +195,12 @@ for (const period of selectedPeriods) {
   const video = qualityURLs(row)[0];
   const files = [];
   if (video) files.push({ type: "video", label: `mp4 (${video.quality})`, path: `${directory}/${stem} - ${video.quality}.mp4`, url: video.url, quality: video.quality });
-  if (row.audio_url) {
-    const audioURL = audioFormat === "m4a" && row.audio_m4a ? row.audio_m4a : row.audio_url;
-    const extension = sourceExtension(audioURL);
-    files.push({ type: "audio", label: extension, extension, path: `${directory}/${stem}.${extension}`, url: audioURL });
-  } else if (video) {
+  if (row.audio_url && sourceExtension(row.audio_url) === "mp3") {
+    files.push({ type: "audio", label: "mp3", extension: "mp3", path: `${directory}/${stem}.mp3`, url: row.audio_url });
+  } else if (row.audio_url) {
+    console.warn(`${meta.period} ${meta.title}: skipping non-MP3 audio source`);
+  }
+  if (!row.audio_url && video) {
     files.push({ type: "audio-extract", label: "audio stream", videoPath: `${directory}/${stem} - ${video.quality}.mp4`, videoURL: video.url, directory });
   }
   if (files.length) jobs.push({ period: meta.period, episode, title: meta.title, speaker: meta.speaker, stem, directory, files });

@@ -19,7 +19,8 @@ Set these values in the environment file:
 ```sh
 export GENERAL_CONFERENCE_DOWNLOAD_PATH="$HOME/Videos/General Conference"
 export GENERAL_CONFERENCE_VIDEO_QUALITY="720p"
-export GENERAL_CONFERENCE_AUDIO_FORMAT="m4a"
+# Audio output is MP3 only; non-MP3 sources are skipped.
+export GENERAL_CONFERENCE_AUDIO_FORMAT="mp3"
 ```
 
 The Brightcove policy key is only needed for subtitle extraction:
