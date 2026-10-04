@@ -131,8 +131,10 @@ async function copyIfPresent(source, target) {
   }
 }
 async function ensureFetched(source, target, fetcher) {
-  const copied = await copyIfPresent(source, target);
-  if (copied !== "missing") return copied;
+  if (source) {
+    const copied = await copyIfPresent(source, target);
+    if (copied !== "missing") return copied;
+  }
   try {
     const content = await fetcher();
     if (!content) return "unavailable";
@@ -180,7 +182,7 @@ if (!episodeOnly && !skipShow) {
     try { latestMedia = await pageMedia(latestRecord.page_url); }
     catch (error) { console.warn(`series artwork lookup failed ${latestPeriod}: ${error.message}`); }
   }
-  action = await ensureFetched("./data/artwork/poster.jpg", `${root}/poster.jpg`, () => fetchBinary(latestLinks.season_artwork_url || latestMedia.seasonPoster));
+  action = await ensureFetched("", `${root}/poster.jpg`, () => fetchBinary(latestLinks.season_artwork_url || latestMedia.seasonPoster));
   sidecarLog("General Conference", "poster.jpg", action);
   action = await writeIfChanged(`${root}/tvshow.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<tvshow><title>General Conference</title><sorttitle>General Conference</sorttitle><genre>Religious</genre></tvshow>\n`);
   sidecarLog("General Conference", "tvshow.nfo", action);
@@ -207,7 +209,7 @@ for (const period of [...periods].sort()) {
       try { seasonMedia = await pageMedia(seasonRecord.page_url); }
       catch (error) { console.warn(`season artwork lookup failed ${period}: ${error.message}`); }
     }
-    action = await ensureFetched(`./data/artwork/season-${period}.jpg`, `${seasonDirectory}/poster.jpg`, () => fetchBinary(seasonLinks.season_artwork_url || seasonMedia.seasonPoster));
+    action = await ensureFetched("", `${seasonDirectory}/poster.jpg`, () => fetchBinary(seasonLinks.season_artwork_url || seasonMedia.seasonPoster));
     sidecarLog(`Season ${code}`, "poster.jpg", action);
     action = await writeIfChanged(`${seasonDirectory}/season.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<season><title>${xml(label)}</title><seasonnumber>${code}</seasonnumber><year>${year}</year></season>\n`);
     sidecarLog(`Season ${code}`, "season.nfo", action);
@@ -223,7 +225,10 @@ for (const period of [...periods].sort()) {
     let stem = `General Conference - S${code} - ${safeName(record.title)}`;
     let episode = "";
     let directory = seasonDirectory;
-    const id = pageID(record.page_url);
+    const links = mediaByURL.get(record.page_url) ?? {};
+    let media = {};
+    try { media = await pageMedia(record.page_url); }
+    catch (error) { console.warn(`media lookup failed ${record.page_url}: ${error.message}`); }
     if (kind === "talk") {
       const number = episodeNumber(record, period);
       episodes.set(period, number);
@@ -235,18 +240,14 @@ for (const period of [...periods].sort()) {
         continue;
       }
       await mkdir(directory, { recursive: true });
-      const links = mediaByURL.get(record.page_url) ?? {};
-      let media = {};
-      try { media = await pageMedia(record.page_url); }
-      catch (error) { console.warn(`media lookup failed ${record.page_url}: ${error.message}`); }
-      action = await ensureFetched(`./data/text/${id}.md`, `${directory}/${stem}.md`, () => fetchMarkdown(record.page_url, record.title));
+      action = await ensureFetched("", `${directory}/${stem}.md`, () => fetchMarkdown(record.page_url, record.title));
       sidecarLog(sidecarLabel, ".md", action);
-      action = await ensureFetched(`./data/subtitles/${id}.en.vtt`, `${directory}/${stem}.vtt`, async () => {
+      action = await ensureFetched("", `${directory}/${stem}.vtt`, async () => {
         const subtitleURL = links.subtitle_urls?.split(" | ")[0] || "";
         return subtitleURL ? fetchText(subtitleURL) : fetchSubtitle(media.videoID);
       });
       sidecarLog(sidecarLabel, ".vtt", action);
-      action = await ensureFetched(`./data/artwork/${id}.jpg`, `${directory}/${stem}.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
+      action = await ensureFetched("", `${directory}/${stem}.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
       sidecarLog(sidecarLabel, ".jpg", action);
       action = await writeIfChanged(`${directory}/.plexmatch`, `title=${record.title}\ntype=episode\nseason=${code}\nepisode=${episode}\n`);
       sidecarLog(sidecarLabel, ".plexmatch", action);
@@ -262,11 +263,14 @@ for (const period of [...periods].sort()) {
     action = await writeIfChanged(`${directory}/episode.nfo`, nfo);
     sidecarLog(sidecarLabel, "episode.nfo", action);
     if (kind !== "talk") {
-      action = await copyIfPresent(`./data/text/${id}.md`, `${directory}/${stem}.md`);
+      action = await ensureFetched("", `${directory}/${stem}.md`, () => fetchMarkdown(record.page_url, record.title));
       sidecarLog(sidecarLabel, ".md", action);
-      action = await copyIfPresent(`./data/subtitles/${id}.en.vtt`, `${directory}/${stem}.vtt`);
+      action = await ensureFetched("", `${directory}/${stem}.vtt`, async () => {
+        const subtitleURL = links.subtitle_urls?.split(" | ")[0] || "";
+        return subtitleURL ? fetchText(subtitleURL) : fetchSubtitle(media.videoID);
+      });
       sidecarLog(sidecarLabel, ".vtt", action);
-      action = await copyIfPresent(`./data/artwork/${id}.jpg`, `${directory}/${stem}.jpg`);
+      action = await ensureFetched("", `${directory}/${stem}.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
       sidecarLog(sidecarLabel, ".jpg", action);
     }
   }
