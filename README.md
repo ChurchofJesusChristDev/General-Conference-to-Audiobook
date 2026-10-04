@@ -115,6 +115,20 @@ Run the compatibility matrix against 1971-04, 2000-04, 2025-04, and 2026-04
 before a full crawl. Keep generated downloads and credentials outside the Git
 commit unless they are explicitly intended as release artifacts.
 
+## Convert to an audiobook
+
+The downloader creates one audio file per talk. M4A is preferred when the site
+provides it; MP3 is used as a fallback. To make one audiobook:
+
+1. Open **AudioBookBinder** from the App Store.
+2. Add the talk audio files from one `Season YYYYMM` folder in episode order.
+3. Add the season artwork, such as `poster.jpg`.
+4. Set the title to the conference season and export one `.m4b` audiobook.
+5. Load the result into Bound, Apple Books, or another audiobook app.
+
+The generated Plex/Jellyfin sidecars can be used instead when you want each
+talk to remain a separate episode.
+
 ## Download pre-converted files
 
 - [October 2023 General Conference.m4b](https://github.com/ChurchofJesusChristDev/General-Conference-as-Audiobook/raw/main/October%202023%20General%20Conference.m4b)
