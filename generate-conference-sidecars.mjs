@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 const envPath = process.argv[2] ?? "./oneal.env";
-const metadataPath = process.argv[3] ?? "./cache/all/metadata.tsv";
+const metadataPath = process.argv[3] ?? "./cache/metadata.tsv";
 const firstPeriod = process.argv[4] ?? "1971-04";
 const lastPeriod = process.argv[5] ?? "9999-10";
 const mediaLinksPath = process.argv[6] ?? "./cache/media-links.tsv";

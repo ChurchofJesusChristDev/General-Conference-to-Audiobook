@@ -3,7 +3,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 const landingURL = process.argv[2] ?? "https://www.churchofjesuschrist.org/study/general-conference?lang=eng";
-const outputDirectory = process.argv[3] ?? "./cache/all";
+const outputDirectory = process.argv[3] ?? "./cache";
 const metadataPath = `${outputDirectory}/metadata.tsv`;
 const urlsPath = `${outputDirectory}/urls.tsv`;
 const headers = { "user-agent": "General-Conference-to-Audiobook/1.0" };

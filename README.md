@@ -27,14 +27,14 @@ Crawl conference indexes into resumable cache TSVs:
 ```sh
 node crawl-general-conference-tsv.mjs \
   'https://www.churchofjesuschrist.org/study/general-conference?lang=eng' \
-  ./cache/all
+  ./cache
 ```
 
 Export the permanent talk catalog:
 
 ```sh
 node export-talks-tsv.mjs \
-  ./cache/all/metadata.tsv ./cache/all/urls.tsv ./talks.tsv
+  ./cache/metadata.tsv ./cache/urls.tsv ./talks.tsv
 ```
 
 Refresh media links:
