@@ -227,6 +227,9 @@ function itemHeader(job) {
 function itemStatus(action) {
   return action === "exists" ? "OK (existing)" : "OK";
 }
+async function downloadVerb(path) {
+  return await exists(`${path}.part`) ? "resuming" : "downloading";
+}
 function errorStatus(error) {
   const code = error.message.match(/(?:error: |HTTP )([45]\d\d)/i)?.[1];
   const names = { 401: "Unauthorized", 403: "Forbidden", 404: "Not Found", 429: "Too Many Requests", 500: "Internal Server Error", 502: "Bad Gateway", 503: "Service Unavailable" };
@@ -235,7 +238,7 @@ function errorStatus(error) {
 const failedPeriods = new Set();
 async function processFile(job, file) {
   if (file.type === "audio-extract") {
-    console.log(`    ${itemLabel(job)}: downloading mp4 for audio extraction`);
+    console.log(`    ${itemLabel(job)}: ${await downloadVerb(file.videoPath)} mp4 for audio extraction`);
     await download(file.videoURL, file.videoPath);
     const codec = await runCapture("ffprobe", ["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "default=noprint_wrappers=1:nokey=1", file.videoPath]);
     const [extension, format] = audioContainer(codec);
@@ -244,8 +247,7 @@ async function processFile(job, file) {
     console.log(`    ${itemLabel(job)}: ${extension} OK`);
     return;
   }
-  const verb = file.type === "video" ? "downloading" : "Downloading";
-  console.log(`    ${itemLabel(job)}: ${verb} ${file.label}`);
+  console.log(`    ${itemLabel(job)}: ${await downloadVerb(file.path)} ${file.label}`);
   const action = await download(file.url, file.path);
   console.log(`    ${itemLabel(job)}: ${file.type === "video" ? "mp4" : file.extension} ${itemStatus(action)}`);
 }
