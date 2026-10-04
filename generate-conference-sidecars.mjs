@@ -37,7 +37,7 @@ function parseTSV(text) {
 }
 function safeName(value) { return value.replace(/[/:*?"<>|\\]+/g, "-").replace(/\s+/g, " ").trim(); }
 function sidecarStatus(action) {
-  if (action === "checked" || action === "copied") return "OK (exists and is up-to-date)";
+  if (action === "checked" || action === "copied") return "OK";
   if (action === "generated" || action === "downloaded") return "updated";
   return action;
 }
