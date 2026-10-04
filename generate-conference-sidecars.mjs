@@ -230,14 +230,14 @@ for (const period of [...periods].sort()) {
       try { media = await pageMedia(record.page_url); }
       catch (error) { console.warn(`media lookup failed ${record.page_url}: ${error.message}`); }
       action = await ensureFetched(`./data/text/${id}.md`, `${directory}/${stem}.md`, () => fetchMarkdown(record.page_url, record.title));
-      sidecarLog(sidecarLabel, `${stem}.md`, action);
+      sidecarLog(sidecarLabel, ".md", action);
       action = await ensureFetched(`./data/subtitles/${id}.en.vtt`, `${directory}/${stem}.vtt`, async () => {
         const subtitleURL = links.subtitle_urls?.split(" | ")[0] || "";
         return subtitleURL ? fetchText(subtitleURL) : fetchSubtitle(media.videoID);
       });
-      sidecarLog(sidecarLabel, `${stem}.vtt`, action);
+      sidecarLog(sidecarLabel, ".vtt", action);
       action = await ensureFetched(`./data/artwork/${id}.jpg`, `${directory}/${stem}.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
-      sidecarLog(sidecarLabel, `${stem}.jpg`, action);
+      sidecarLog(sidecarLabel, ".jpg", action);
       action = await writeIfChanged(`${directory}/.plexmatch`, `title=${record.title}\ntype=episode\nseason=${code}\nepisode=${episode}\n`);
       sidecarLog(sidecarLabel, ".plexmatch", action);
     } else {
