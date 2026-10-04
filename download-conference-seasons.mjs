@@ -181,10 +181,12 @@ for (const period of selectedPeriods) {
   const folder = folderCode(meta.period);
   const prefix = `General Conference - S${folder}`;
   let stem = `${prefix} - ${safeName(meta.title)}`;
+  let episode = "";
   if (kind === "talk") {
     const number = (episodes.get(meta.period) ?? 0) + 1;
     episodes.set(meta.period, number);
-    stem = `${prefix}E${String(number).padStart(2, "0")} - ${safeName(meta.title)}`;
+    episode = String(number).padStart(2, "0");
+    stem = `${prefix}E${episode} - ${safeName(meta.title)}`;
   } else {
     stem = `${prefix} - ${safeName(meta.title)}`;
   }
@@ -201,7 +203,7 @@ for (const period of selectedPeriods) {
   } else if (video) {
     files.push({ type: "audio-extract", label: "audio stream", videoPath: `${directory}/${stem} - ${video.quality}.mp4`, videoURL: video.url, directory });
   }
-  if (files.length) jobs.push({ period: meta.period, title: meta.title, speaker: meta.speaker, stem, directory, files });
+  if (files.length) jobs.push({ period: meta.period, episode, title: meta.title, speaker: meta.speaker, stem, directory, files });
   }
 }
 
@@ -209,8 +211,11 @@ console.log(`Selected seasons: ${selectedPeriods.join(", ")}`);
 console.log(`Downloading ${jobs.length} items for ${firstPeriod} through ${lastPeriod} with concurrency ${concurrency}`);
 let next = 0;
 let completed = 0;
+function itemLabel(job) {
+  return `${job.period}${job.episode ? ` #${job.episode}` : ""}`;
+}
 function itemHeader(job) {
-  console.log(`${completed + 1}/${jobs.length} ${job.period} - ${job.title}${job.speaker ? ` - ${job.speaker}` : ""}`);
+  console.log(`${completed + 1}/${jobs.length} ${itemLabel(job)} - ${job.title}${job.speaker ? ` - ${job.speaker}` : ""}`);
 }
 function itemStatus(action) {
   return action === "exists" ? "OK (existing)" : "OK";
@@ -223,18 +228,19 @@ function errorStatus(error) {
 const failedPeriods = new Set();
 async function processFile(job, file) {
   if (file.type === "audio-extract") {
-    console.log("    Downloading mp4 for audio extraction");
+    console.log(`    ${itemLabel(job)}: downloading mp4 for audio extraction`);
     await download(file.videoURL, file.videoPath);
     const codec = await runCapture("ffprobe", ["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "default=noprint_wrappers=1:nokey=1", file.videoPath]);
     const [extension, format] = audioContainer(codec);
     const outputPath = `${file.directory}/${job.stem}.${extension}`;
     if (!(await mediaIsValid(outputPath))) await extractAudio(file.videoPath, outputPath, format);
-    console.log(`    ${extension} OK`);
+    console.log(`    ${itemLabel(job)}: ${extension} OK`);
     return;
   }
-  console.log(`    Downloading ${file.label}`);
+  const verb = file.type === "video" ? "downloading" : "Downloading";
+  console.log(`    ${itemLabel(job)}: ${verb} ${file.label}`);
   const action = await download(file.url, file.path);
-  console.log(`    ${file.type === "video" ? "mp4" : file.extension} ${itemStatus(action)}`);
+  console.log(`    ${itemLabel(job)}: ${file.type === "video" ? "mp4" : file.extension} ${itemStatus(action)}`);
 }
 async function worker() {
   while (next < jobs.length) {
