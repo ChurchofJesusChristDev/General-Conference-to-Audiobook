@@ -8,6 +8,21 @@ compatibility: Requires Node.js. Use Brave CDP when runtime inspection is needed
 
 Use this workflow to turn a dynamic content site into a local, resumable media manifest.
 
+## Separation of concerns
+
+Keep site-specific discovery in the metadata updater. It may fetch index pages,
+encoded state, player APIs, Brightcove data, captions, artwork, and readable
+text, then upsert permanent or keyed TSV catalogs.
+
+Keep the media downloader site-agnostic. It consumes keyed TSV rows and handles
+only selected URLs, fallback representation choice, atomic/resumable downloads,
+validation, and destination naming. It must not parse page HTML, call player
+APIs, contain account IDs, or guess site URL patterns.
+
+Keep sidecar generation local. It consumes downloaded files and keyed metadata;
+any remote subtitle, artwork, or text URL must already be present in the TSV
+before the downloader starts.
+
 ## Index structure
 
 Use these references when labeling conference ranges and selecting season artwork:
