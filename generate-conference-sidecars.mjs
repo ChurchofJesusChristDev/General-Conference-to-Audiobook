@@ -172,6 +172,16 @@ const periods = new Set(selectedMetadata.filter((record) => record.period >= fir
 await mkdir(root, { recursive: true });
 let action;
 if (!episodeOnly && !skipShow) {
+  const latestPeriod = [...periods].sort().at(-1);
+  const latestRecord = metadata.find((item) => item.period === latestPeriod && item.kind !== "season");
+  const latestLinks = latestRecord ? mediaByURL.get(latestRecord.page_url) ?? {} : {};
+  let latestMedia = {};
+  if (latestRecord) {
+    try { latestMedia = await pageMedia(latestRecord.page_url); }
+    catch (error) { console.warn(`series artwork lookup failed ${latestPeriod}: ${error.message}`); }
+  }
+  action = await ensureFetched("./data/artwork/poster.jpg", `${root}/poster.jpg`, () => fetchBinary(latestLinks.season_artwork_url || latestMedia.seasonPoster));
+  sidecarLog("General Conference", "poster.jpg", action);
   action = await writeIfChanged(`${root}/tvshow.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<tvshow><title>General Conference</title><sorttitle>General Conference</sorttitle><genre>Religious</genre></tvshow>\n`);
   sidecarLog("General Conference", "tvshow.nfo", action);
   action = await writeIfChanged(`${root}/.plexmatch`, "title=General Conference\ntype=show\n");
@@ -197,7 +207,7 @@ for (const period of [...periods].sort()) {
       try { seasonMedia = await pageMedia(seasonRecord.page_url); }
       catch (error) { console.warn(`season artwork lookup failed ${period}: ${error.message}`); }
     }
-    action = await ensureFetched("./data/artwork/season.jpg", `${seasonDirectory}/poster.jpg`, () => fetchBinary(seasonLinks.season_artwork_url || seasonMedia.seasonPoster));
+    action = await ensureFetched(`./data/artwork/season-${period}.jpg`, `${seasonDirectory}/poster.jpg`, () => fetchBinary(seasonLinks.season_artwork_url || seasonMedia.seasonPoster));
     sidecarLog(`Season ${code}`, "poster.jpg", action);
     action = await writeIfChanged(`${seasonDirectory}/season.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<season><title>${xml(label)}</title><seasonnumber>${code}</seasonnumber><year>${year}</year></season>\n`);
     sidecarLog(`Season ${code}`, "season.nfo", action);
