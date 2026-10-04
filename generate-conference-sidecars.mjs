@@ -265,10 +265,8 @@ for (const period of [...periods].sort()) {
       }
       await mkdir(directory, { recursive: true });
       await ensureSidecar(sidecarLabel, ".md", `${directory}/${stem}.md`, () => fetchMarkdown(record.page_url, record.title));
-      await ensureSidecar(sidecarLabel, ".vtt", `${directory}/${stem}.vtt`, async () => {
-        const subtitleURL = links.subtitle_urls?.split(" | ")[0] || "";
-        return subtitleURL ? fetchText(subtitleURL) : fetchSubtitle(media.videoID);
-      });
+      const subtitleURL = links.subtitle_urls?.split(" | ")[0] || "";
+      if (subtitleURL) await ensureSidecar(sidecarLabel, ".vtt", `${directory}/${stem}.vtt`, () => fetchText(subtitleURL));
       await ensureSidecar(sidecarLabel, "poster.jpg", `${directory}/poster.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
       action = await writeIfChanged(`${directory}/.plexmatch`, `title=${record.title}\ntype=episode\nseason=${code}\nepisode=${episode}\n`);
       sidecarLog(sidecarLabel, ".plexmatch", action);
@@ -285,10 +283,8 @@ for (const period of [...periods].sort()) {
     sidecarLog(sidecarLabel, "episode.nfo", action);
     if (kind !== "talk") {
       await ensureSidecar(sidecarLabel, ".md", `${directory}/${stem}.md`, () => fetchMarkdown(record.page_url, record.title));
-      await ensureSidecar(sidecarLabel, ".vtt", `${directory}/${stem}.vtt`, async () => {
-        const subtitleURL = links.subtitle_urls?.split(" | ")[0] || "";
-        return subtitleURL ? fetchText(subtitleURL) : fetchSubtitle(media.videoID);
-      });
+      const subtitleURL = links.subtitle_urls?.split(" | ")[0] || "";
+      if (subtitleURL) await ensureSidecar(sidecarLabel, ".vtt", `${directory}/${stem}.vtt`, () => fetchText(subtitleURL));
       await ensureSidecar(sidecarLabel, "poster.jpg", `${directory}/poster.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
     }
   }
