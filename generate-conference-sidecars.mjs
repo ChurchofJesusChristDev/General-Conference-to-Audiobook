@@ -36,7 +36,14 @@ function parseTSV(text) {
   return lines.map((line) => Object.fromEntries(line.split("\t").map((value, i) => [headers[i], value])));
 }
 function safeName(value) { return value.replace(/[/:*?"<>|\\]+/g, "-").replace(/\s+/g, " ").trim(); }
-function sidecarLog(label, name, action) { console.log(`${label}: ${name} ${action}`); }
+function sidecarStatus(action) {
+  if (action === "checked" || action === "copied") return "OK (exists and is up-to-date)";
+  if (action === "generated" || action === "downloaded") return "updated";
+  return action;
+}
+function sidecarLog(label, name, action) {
+  console.log(`${label}: ${name}${action ? ` ${sidecarStatus(action)}` : ""}`);
+}
 function xml(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function folderCode(period) { return period.replace("-", ""); }
 function seasonCode(period) { return period.replace("-", ""); }
@@ -233,11 +240,11 @@ for (const period of [...periods].sort()) {
     sidecarLog(sidecarLabel, ".nfo", action);
     if (kind !== "talk") {
       action = await copyIfPresent(`./data/text/${id}.md`, `${directory}/${stem}.md`);
-      console.log(`    .md - ${action}`);
+      sidecarLog(sidecarLabel, ".md", action);
       action = await copyIfPresent(`./data/subtitles/${id}.en.vtt`, `${directory}/${stem}.vtt`);
-      console.log(`    .vtt - ${action}`);
+      sidecarLog(sidecarLabel, ".vtt", action);
       action = await copyIfPresent(`./data/artwork/${id}.jpg`, `${directory}/${stem}.jpg`);
-      console.log(`    .jpg - ${action}`);
+      sidecarLog(sidecarLabel, ".jpg", action);
     }
   }
 }
