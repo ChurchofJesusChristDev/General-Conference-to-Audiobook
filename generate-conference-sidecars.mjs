@@ -163,6 +163,11 @@ try { mediaLinks = parseTSV(await readFile(mediaLinksPath, "utf8")); }
 catch (error) { if (error.code !== "ENOENT") throw error; }
 const mediaByURL = new Map(mediaLinks.map((row) => [row.page_url, row]));
 const episodes = new Map();
+function episodeNumber(record, period) {
+  const talks = metadata.filter((item) => item.period === period && (item.kind ?? "talk") === "talk");
+  const index = talks.findIndex((item) => item.page_url === record.page_url);
+  return index >= 0 ? index + 1 : (episodes.get(period) ?? 0) + 1;
+}
 const periods = new Set(selectedMetadata.filter((record) => record.period >= firstPeriod && record.period <= lastPeriod).map((record) => record.period));
 await mkdir(root, { recursive: true });
 let action;
@@ -207,9 +212,10 @@ for (const period of [...periods].sort()) {
     let episode = "";
     let directory = seasonDirectory;
     const id = pageID(record.page_url);
-    const sidecarLabel = `${period}${kind === "talk" ? ` #${String((episodes.get(period) ?? 0) + 1).padStart(2, "0")}` : ""}`;
+    const sidecarNumber = kind === "talk" ? episodeNumber(record, period) : 0;
+    const sidecarLabel = `${period}${sidecarNumber ? ` #${String(sidecarNumber).padStart(2, "0")}` : ""}`;
     if (kind === "talk") {
-      const number = (episodes.get(period) ?? 0) + 1;
+      const number = episodeNumber(record, period);
       episodes.set(period, number);
       episode = String(number).padStart(2, "0");
       stem = `General Conference - S${code}E${episode} - ${safeName(record.title)}`;
