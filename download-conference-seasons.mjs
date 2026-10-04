@@ -253,13 +253,23 @@ function generateEpisodeSidecars(job) {
 }
 async function processFile(job, file) {
   if (file.type === "audio-extract") {
-    console.log(`    ${itemLabel(job)}: ${await downloadVerb(file.videoPath)} mp4 for audio extraction`);
-    await download(file.videoURL, file.videoPath);
+    if (await mediaIsValid(file.videoPath)) console.log(`    ${itemLabel(job)}: mp4 OK (existing)`);
+    else {
+      console.log(`    ${itemLabel(job)}: ${await downloadVerb(file.videoPath)} mp4 for audio extraction`);
+      await download(file.videoURL, file.videoPath);
+    }
     const codec = await runCapture("ffprobe", ["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "default=noprint_wrappers=1:nokey=1", file.videoPath]);
     const [extension, format] = audioContainer(codec);
     const outputPath = `${file.directory}/${job.stem}.${extension}`;
-    if (!(await mediaIsValid(outputPath))) await extractAudio(file.videoPath, outputPath, format);
-    console.log(`    ${itemLabel(job)}: ${extension} OK`);
+    if (await mediaIsValid(outputPath)) console.log(`    ${itemLabel(job)}: ${extension} OK (existing)`);
+    else {
+      await extractAudio(file.videoPath, outputPath, format);
+      console.log(`    ${itemLabel(job)}: ${extension} OK`);
+    }
+    return;
+  }
+  if (await mediaIsValid(file.path)) {
+    console.log(`    ${itemLabel(job)}: ${file.type === "video" ? "mp4" : file.extension} OK (existing)`);
     return;
   }
   console.log(`    ${itemLabel(job)}: ${await downloadVerb(file.path)} ${file.label}`);
