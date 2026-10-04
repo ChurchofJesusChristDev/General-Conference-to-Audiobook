@@ -1,0 +1,193 @@
+#!/usr/bin/env node
+
+import { copyFile, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
+
+const envPath = process.argv[2] ?? "./oneal.env";
+const metadataPath = process.argv[3] ?? "./data/all/metadata.tsv";
+const firstPeriod = process.argv[4] ?? "1971-04";
+const lastPeriod = process.argv[5] ?? "9999-10";
+const env = parseEnv(await readFile(envPath, "utf8"));
+const root = expandHome(env.GENERAL_CONFERENCE_DOWNLOAD_PATH);
+const policyKey = env.GENERAL_CONFERENCE_BRIGHTCOVE_POLICY_KEY;
+const defuddleFetcher = env.DEFUDDLE_FETCHER ?? "/Users/aj/Skills/pi-skills/defuddle-web-fetch/fetch.js";
+if (!root) throw new Error("GENERAL_CONFERENCE_DOWNLOAD_PATH is required");
+
+function expandHome(path) {
+  return path?.startsWith("~/") ? `${process.env.HOME}/${path.slice(2)}` : path;
+}
+
+function parseEnv(text) {
+  const values = {};
+  for (const line of text.split("\n")) {
+    const match = line.match(/^export\s+([A-Z0-9_]+)=['\"](.*)['\"]\s*$/);
+    if (match) values[match[1]] = match[2];
+  }
+  return values;
+}
+function parseTSV(text) {
+  const lines = text.trimEnd().split("\n");
+  const headers = lines.shift().split("\t");
+  return lines.map((line) => Object.fromEntries(line.split("\t").map((value, i) => [headers[i], value])));
+}
+function safeName(value) { return value.replace(/[/:*?"<>|\\]+/g, "-").replace(/\s+/g, " ").trim(); }
+function xml(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function folderCode(period) { return period.replace("-", ""); }
+function seasonCode(period) { return period.replace("-", ""); }
+function pageID(url) { return new URL(url).pathname.split("/").pop(); }
+async function writeIfChanged(path, content) {
+  try {
+    if ((await readFile(path, "utf8")) === content) return "checked";
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  await writeFile(path, content);
+  return "generated";
+}
+async function fetchHTML(url) {
+  const response = await fetch(url, { headers: { "user-agent": "General-Conference-to-Audiobook/1.0" } });
+  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+  return response.text();
+}
+function initialState(html) {
+  const match = html.match(/window\.__INITIAL_STATE__="([^"]+)"/);
+  if (!match) throw new Error("initial state not found");
+  return JSON.parse(Buffer.from(match[1], "base64").toString("utf8"));
+}
+const pageCache = new Map();
+async function pageMedia(url) {
+  if (!pageCache.has(url)) {
+    const state = initialState(await fetchHTML(url));
+    const page = Object.values(state.reader?.contentStore ?? {})[0];
+    const body = page?.content?.body ?? "";
+    const video = body.match(/<video\\b[^>]*>/i)?.[0] ?? "";
+    pageCache.set(url, {
+      poster: video.match(/poster="([^"]+)"/i)?.[1] ?? "",
+      videoID: video.match(/data-video-id="([^"]+)"/i)?.[1] ?? "",
+      seasonPoster: page?.meta?.ogTagImageUrl ?? "",
+    });
+  }
+  return pageCache.get(url);
+}
+async function fetchMarkdown(url, title) {
+  const result = await execFileAsync("node", [defuddleFetcher, "--timeout", "30", url], { maxBuffer: 1024 * 1024 * 8 });
+  const heading = `# ${title}`;
+  const index = result.stdout.lastIndexOf(heading);
+  return `${(index >= 0 ? result.stdout.slice(index) : result.stdout).trim()}\n`;
+}
+async function fetchSubtitle(videoID) {
+  if (!policyKey || !videoID) return "";
+  const response = await fetch(`https://edge.api.brightcove.com/playback/v1/accounts/1241706627001/videos/${videoID}`, { headers: { accept: `application/json;pk=${policyKey}` } });
+  if (!response.ok) throw new Error(`Brightcove ${response.status}`);
+  const playback = await response.json();
+  const track = (playback.text_tracks ?? []).find((item) => item.kind === "captions" && item.srclang === "en");
+  if (!track) return "";
+  const source = track.sources?.[0]?.src ?? track.src;
+  const vtt = await fetch(source.replace(/^http:/, "https:"));
+  if (!vtt.ok) throw new Error(`VTT ${vtt.status}`);
+  return `${await vtt.text()}\n`;
+}
+async function hasMedia(directory) {
+  try {
+    const entries = await readdir(directory, { withFileTypes: true });
+    return entries.some((entry) => entry.isFile() && /\.mp4$/i.test(entry.name));
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
+}
+async function copyIfPresent(source, target) {
+  try {
+    const sourceInfo = await stat(source);
+    try {
+      const targetInfo = await stat(target);
+      if (targetInfo.size === sourceInfo.size) return "checked";
+    } catch (error) { if (error.code !== "ENOENT") throw error; }
+    await copyFile(source, target);
+    return "copied";
+  } catch (error) {
+    if (error.code === "ENOENT") return "missing";
+    throw error;
+  }
+}
+async function ensureFetched(source, target, fetcher) {
+  const copied = await copyIfPresent(source, target);
+  if (copied !== "missing") return copied;
+  try {
+    const content = await fetcher();
+    if (!content) return "unavailable";
+    await writeFile(target, content);
+    return "downloaded";
+  } catch (error) {
+    console.warn(`sidecar fetch failed ${target}: ${error.message}`);
+    return "unavailable";
+  }
+}
+
+const metadata = parseTSV(await readFile(metadataPath, "utf8"));
+const episodes = new Map();
+const periods = new Set(metadata.filter((record) => record.period >= firstPeriod && record.period <= lastPeriod).map((record) => record.period));
+await mkdir(root, { recursive: true });
+let action = await writeIfChanged(`${root}/tvshow.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<tvshow><title>General Conference</title><sorttitle>General Conference</sorttitle><genre>Religious</genre></tvshow>\n`);
+console.log(`sidecar ${action} tvshow.nfo`);
+ action = await writeIfChanged(`${root}/.plexmatch`, "title=General Conference\ntype=show\n");
+console.log(`sidecar ${action} .plexmatch`);
+
+for (const period of [...periods].sort()) {
+  const folder = folderCode(period);
+  const code = seasonCode(period);
+  const [year, month] = period.split("-");
+  const label = month === "04" ? `April ${year} General Conference` : `October ${year} General Conference`;
+  const seasonDirectory = `${root}/Season ${folder}`;
+  await mkdir(seasonDirectory, { recursive: true });
+  action = await writeIfChanged(`${seasonDirectory}/season.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<season><title>${xml(label)}</title><seasonnumber>${code}</seasonnumber><year>${year}</year></season>\n`);
+  console.log(`sidecar ${action} Season ${code}/season.nfo`);
+  action = await writeIfChanged(`${seasonDirectory}/.plexmatch`, `title=${label}\ntype=season\nseason=${code}\n`);
+  console.log(`sidecar ${action} Season ${code}/.plexmatch`);
+  if (period === "2026-04") {
+    action = await copyIfPresent("./data/artwork/season.jpg", `${seasonDirectory}/poster.jpg`);
+    console.log(`sidecar ${action} Season ${code}/poster.jpg`);
+  }
+
+  for (const record of metadata.filter((item) => item.period === period && item.kind !== "season")) {
+    console.log(`${period}\n  ${record.title}${record.speaker ? ` - ${record.speaker}` : ""}`);
+    let stem = `General Conference - S${code} - ${safeName(record.title)}`;
+    let episode = "";
+    let directory = seasonDirectory;
+    if (record.kind === "talk") {
+      const number = (episodes.get(period) ?? 0) + 1;
+      episodes.set(period, number);
+      episode = String(number).padStart(2, "0");
+      stem = `General Conference - S${code}E${episode} - ${safeName(record.title)}`;
+      directory = `${seasonDirectory}/${stem}`;
+      if (!(await hasMedia(directory))) {
+        console.log(`${period}\n  ${record.title} - skipped (no media)`);
+        continue;
+      }
+      await mkdir(directory, { recursive: true });
+      action = await writeIfChanged(`${directory}/.plexmatch`, `title=${record.title}\ntype=episode\nseason=${code}\nepisode=${episode}\n`);
+      console.log(`    .plexmatch - ${action}`);
+    } else {
+      directory = `${seasonDirectory}/Sessions`;
+      if (!(await hasMedia(directory))) {
+        console.log(`${period}\n  ${record.title} - skipped (no media)`);
+        continue;
+      }
+      await mkdir(directory, { recursive: true });
+    }
+    const nfo = `<?xml version="1.0" encoding="UTF-8"?>\n<episodedetails><title>${xml(record.title)}</title><showtitle>General Conference</showtitle><season>${code}</season>${episode ? `<episode>${episode}</episode>` : ""}<plot>${xml(record.description)}</plot>${record.speaker ? `<actor><name>${xml(record.speaker)}</name></actor>` : ""}</episodedetails>\n`;
+    action = await writeIfChanged(`${directory}/episode.nfo`, nfo);
+    console.log(`    .nfo - ${action}`);
+    const id = pageID(record.page_url);
+    action = await copyIfPresent(`./data/text/${id}.md`, `${directory}/${stem}.md`);
+    console.log(`    .md - ${action}`);
+    action = await copyIfPresent(`./data/subtitles/${id}.en.vtt`, `${directory}/${stem}.vtt`);
+    console.log(`    .vtt - ${action}`);
+    action = await copyIfPresent(`./data/artwork/${id}.jpg`, `${directory}/${stem}.jpg`);
+    console.log(`    .jpg - ${action}`);
+  }
+}
+console.log(`Generated sidecars for ${periods.size} seasons`);

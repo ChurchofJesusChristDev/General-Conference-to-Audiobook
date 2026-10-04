@@ -1,60 +1,125 @@
-# Download General Conference <br> (and convert to Audiobook)
+# General Conference to Audiobook
 
-How to convert the official General Conference website listing into an \
-unofficial Audiobook for easy listening on any device, in any app.
+Download General Conference talks from ChurchofJesusChrist.org and organize them
+for audiobook apps, Plex, or Jellyfin.
 
-**UPDATES**
-- October 2023 - no changes, still works as-is
-- April 2022 - updated selectors for new site
+The old browser-console downloader is retired. The current workflow extracts
+metadata and media links from the site's encoded page state, then downloads
+selected seasons with resumable files.
 
-## Download Pre-Converted Files
+## Requirements
+
+- Node.js 20 or newer
+- `curl`
+- `ffmpeg` and `ffprobe`
+- A project-local environment file based on [`example.env`](./example.env)
+
+Set these values in the environment file:
+
+```sh
+export GENERAL_CONFERENCE_DOWNLOAD_PATH="$HOME/Videos/General Conference"
+export GENERAL_CONFERENCE_VIDEO_QUALITY="720p"
+export GENERAL_CONFERENCE_AUDIO_FORMAT="m4a"
+```
+
+The Brightcove policy key is only needed for subtitle extraction:
+
+```sh
+export GENERAL_CONFERENCE_BRIGHTCOVE_POLICY_KEY="..."
+```
+
+Do not commit a real environment file or secret values.
+
+## Build the catalogs
+
+Crawl the conference indexes and save resumable TSV checkpoints:
+
+```sh
+node crawl-general-conference-tsv.mjs \
+  'https://www.churchofjesuschrist.org/study/general-conference?lang=eng' \
+  ./data/all
+```
+
+Export the stable talk catalog:
+
+```sh
+node export-talks-tsv.mjs ./data/all/metadata.tsv ./data/all/urls.tsv ./talks.tsv
+```
+
+`talks.tsv`, `presidents.tsv`, and `conferences.tsv` are stable catalogs.
+Generated media URLs belong in `data/`, not in the permanent talk catalog.
+
+## Extract media
+
+For one conference page, use the no-browser extractor:
+
+```sh
+node extract-media-links-cli.mjs \
+  'https://www.churchofjesuschrist.org/study/general-conference/2025/04?lang=eng' \
+  ./data/media-links.json
+```
+
+The extractor can be rerun. It writes a checkpoint after each successful page.
+The CDP extractor, `extract-media-links.mjs`, is available when browser-rendered
+controls are needed and expects Brave Beta's CDP endpoint on localhost.
+
+For the catalog workflow, refresh links for a period range with:
+
+```sh
+node crawl-media-links-tsv.mjs ./talks.tsv ./data/media-links.tsv false 1971-04 2026-04
+```
+
+## Download and create sidecars
+
+Download one season, a range, or the next incomplete seasons:
+
+```sh
+node download-conference-seasons.mjs \
+  --env ./example.env \
+  --talks ./data/all/metadata.tsv \
+  --media ./data/media-links.tsv \
+  --start 2025-04 \
+  --end 2025-04
+
+node download-conference-seasons.mjs \
+  --env ./example.env \
+  --talks ./data/all/metadata.tsv \
+  --media ./data/media-links.tsv \
+  --next 1
+```
+
+Downloads use visible `.part` files and are published only after `ffprobe`
+validation. A `download.complete` marker is written only when the selected
+season finishes successfully. The downloader runs the sidecar generator after
+the media pass.
+
+Sidecars include:
+
+- `tvshow.nfo`, season and episode NFO files
+- `.plexmatch` files
+- Markdown talk text
+- WebVTT subtitles
+- Episode and season artwork
+
+The supporting tools are:
+
+```sh
+node add-subtitle-links.mjs ./data/media-links.json
+node download-subtitles.mjs ./data/media-links.json ./data/subtitles
+node defuddle-conference-text.mjs ./data/media-links.json ./data/text
+node download-artwork.mjs ./data/media-links.json ./data/artwork
+node generate-conference-sidecars.mjs ./example.env ./data/all/metadata.tsv
+```
+
+Run the compatibility matrix against 1971-04, 2000-04, 2025-04, and 2026-04
+before a full crawl. Keep generated downloads and credentials outside the Git
+commit unless they are explicitly intended as release artifacts.
+
+## Download pre-converted files
 
 - [October 2023 General Conference.m4b](https://github.com/ChurchofJesusChristDev/General-Conference-as-Audiobook/raw/main/October%202023%20General%20Conference.m4b)
 
-## Download from ChurchOfJesusChrist.org
+## Other resources
 
-1. Go to any of the General Conference listings (from April 1971 to Present). **For example**:
-   - https://www.churchofjesuschrist.org/study/general-conference/2021/10
-   - https://www.churchofjesuschrist.org/study/general-conference/1971/04
-2. Open Chrome's `Menu => More Tools => Developer Tools` \
-   (the JavaScript Console Inspector)
-   <img width="954" alt="Screenshot 2023-02-06 at 6 19 00 AM" src="https://user-images.githubusercontent.com/122831/216982130-fa51eea2-f5d9-4a4b-9ee7-5f6c36c8d158.png">
-3. Copy and Paste this script into the Console:
-   ```js
-   var script = document.createElement('script');
-   script.src="https://churchofjesuschristdev.github.io/General-Conference-to-Audiobook/general-conference-talks.js";
-   document.body.append(script);
-   ```
-   <img width="954" alt="Screenshot 2023-02-06 at 6 22 58 AM" src="https://user-images.githubusercontent.com/122831/216982726-f9056e2b-3daf-4c86-9263-c67bf6968804.png">
-   <img width="954" alt="Screenshot 2023-02-06 at 6 23 48 AM" src="https://user-images.githubusercontent.com/122831/216982733-d165a4c0-2d49-4909-b25d-2dc00cbb82b1.png">
-4. Download each talk by either:
-     - Painstakingly download each talk with the provided links
-     - Or copy and paste the `curl` commands into `Terminal.app`
-   <img width="848" alt="Screenshot 2023-02-06 at 6 12 23 AM" src="https://user-images.githubusercontent.com/122831/216980391-d62e62cc-31b1-4540-b4d3-349d4f4437c0.png">
-
-## Convert to AudioBook
-
-1. Use **AudioBookBinder** from the ***App Store*** to convert from several `mp3`s into a single `m4b`
-   <img width="612" alt="Screenshot 2023-02-06 at 6 03 25 AM" src="https://user-images.githubusercontent.com/122831/216980303-9dc90374-42e1-4d6d-be5f-c7ffa98d9065.png">
-   <img width="612" alt="Screenshot 2023-02-06 at 6 06 35 AM" src="https://user-images.githubusercontent.com/122831/216980326-dc2a5f5c-0f29-4abb-9d31-378ca32d5376.png">
-   <img width="612" alt="Screenshot 2023-02-06 at 6 10 00 AM" src="https://user-images.githubusercontent.com/122831/216980360-f71d9136-4ea5-49c4-b715-66072d7398f5.png">
-2. Check the Church Newsroom if you'd like a nice image to use: \
-   <https://newsroom.churchofjesuschrist.org/article/october-2022-general-conference-news-announcements>
-   <img width="1211" alt="Screenshot 2023-02-06 at 6 14 13 AM" src="https://user-images.githubusercontent.com/122831/216980624-e850101d-5208-4248-8c0b-be0051d2393f.png">
-3. Enjoy with **Bound** (via its Web Uploader) on iOS, or any other audiobook app on any other device
-   <img width="954" alt="Screenshot 2023-02-06 at 6 27 55 AM" src="https://user-images.githubusercontent.com/122831/216983701-ae97f730-65df-472c-b748-57017f499bb5.png">
-   <img width="320" alt="Screenshot 2023-02-06 at 6 28 15 AM" src="https://user-images.githubusercontent.com/122831/216983747-32f916da-bf56-4ad2-bfbc-a6367d5c03f9.jpeg">
-
-## Also of Interest
-
-## LibriVox Book of Mormon
-
-If you'd like a little more variety in the voice acting of the Book of Mormon, \
-you might enjoy the community recordings put together by LibriVox Volunteers:
-- https://librivox.org/the-book-of-mormon-by-joseph-smith-jr/
-
-## Manuals as AudioBooks
-
-The church has some official audiobooks for the various manuals and study materials:
-- https://www.churchofjesuschrist.org/media/publications?lang=eng
-- https://www.churchofjesuschrist.org/media-library/audio?lang=mlg
+- [LibriVox Book of Mormon](https://librivox.org/the-book-of-mormon-by-joseph-smith-jr/)
+- [Church publications and audio](https://www.churchofjesuschrist.org/media/publications?lang=eng)
