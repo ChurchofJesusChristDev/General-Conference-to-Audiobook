@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 
 const options = parseArguments(process.argv.slice(2));
@@ -106,6 +106,20 @@ async function download(url, finalPath) {
 }
 async function exists(path) {
   try { return (await stat(path)).size > 0; } catch (error) { if (error.code === "ENOENT") return false; throw error; }
+}
+const mediaFile = /\.(?:mp3|m4a|mp4|mka|mkv|ogg|oga|opus|flac|wav|webm)$/i;
+async function directoryHasMedia(directory) {
+  try {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = `${directory}/${entry.name}`;
+      if (entry.isFile() && mediaFile.test(entry.name)) return true;
+      if (entry.isDirectory() && await directoryHasMedia(path)) return true;
+    }
+    return false;
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
 }
 function folderCode(period) { return period.replace("-", ""); }
 function sourceExtension(url) {
@@ -232,6 +246,7 @@ async function worker() {
       console.log(`    progress ${++completed}/${jobs.length}`);
     } catch (error) {
       failedPeriods.add(job.period);
+      if (!(await directoryHasMedia(job.directory))) await rm(job.directory, { recursive: true, force: true });
       console.log(`    FAILED - ${errorStatus(error)}`);
       console.warn(`FAILED ${job.period} ${job.title}: ${error.message.split("\n")[0]}`);
     }
