@@ -7,8 +7,15 @@ const options = parseArguments(process.argv.slice(2));
 const envPath = options.env ?? "./oneal.env";
 const talksPath = options.talks ?? options.metadata ?? "./talks.tsv";
 const mediaLinksPath = options.media ?? options.urls ?? "./data/media-links.tsv";
-const firstPeriod = options.start ?? "1971-04";
-const lastPeriod = options.end ?? "9999-10";
+function latestAvailablePeriod(date = new Date()) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  if (month >= 10) return `${year}-10`;
+  if (month >= 4) return `${year}-04`;
+  return `${year - 1}-10`;
+}
+const firstPeriod = options.start ?? latestAvailablePeriod();
+const lastPeriod = options.end ?? "1971-04";
 const env = parseEnv(await readFile(envPath, "utf8"));
 const root = expandHome(env.GENERAL_CONFERENCE_DOWNLOAD_PATH);
 const videoQuality = env.GENERAL_CONFERENCE_VIDEO_QUALITY ?? "720p";
