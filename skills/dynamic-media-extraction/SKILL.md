@@ -151,8 +151,9 @@ Write a non-hidden completion marker only after every selected file succeeds.
 
 After each episode's media download, fetch its available WebVTT and JPEG
 artwork, then generate that episode's sidecars. Generate `tvshow.nfo`, show
-`.plexmatch`, season `season.nfo`, season `.plexmatch`, and season artwork once
-per applicable show/season, not once per episode. Generate episode `.nfo`,
+`.plexmatch`, season `season.nfo`, and season `.plexmatch` once per
+applicable show/season, not once per episode. Do not generate show or season
+poster files. Generate episode `.nfo`,
 episode `.plexmatch`, Markdown, WebVTT, and episode artwork only after at least
 one video file for that episode is complete. Sidecar generation must be safe to
 rerun and must log the episode once, followed by indented file statuses such as
@@ -167,11 +168,9 @@ use this layout:
 General Conference/
   tvshow.nfo
   .plexmatch
-  poster.jpg
   Season 202604/
     season.nfo
     .plexmatch
-    poster.jpg
     General Conference - S202604E01 - Introduction/
       General Conference - S202604E01 - Introduction.m4a
       General Conference - S202604E01 - Introduction - 720p.mp4
@@ -195,7 +194,7 @@ Rules:
   episode filename title. Do not replace it with the speaker, session name, or
   a generated label.
 - Generate `tvshow.nfo` and `.plexmatch` at the series level.
-- Generate `season.nfo`, `.plexmatch`, and `poster.jpg` inside each season.
+- Generate `season.nfo` and `.plexmatch` inside each season.
 - Put each talk in its own folder so it can contain episode-level sidecars.
 - Generate `episode.nfo` and `.plexmatch` inside each talk folder.
 - Save episode artwork as `poster.jpg` inside the episode folder, following

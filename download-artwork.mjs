@@ -15,14 +15,6 @@ async function download(url, path) {
   return true;
 }
 
-const seasons = new Map();
-for (const record of data.records) {
-  const parts = new URL(record.url).pathname.split("/").filter(Boolean);
-  const period = `${parts.at(-3)}-${parts.at(-2)}`;
-  if (record.artwork?.season && !seasons.has(period)) seasons.set(period, record.artwork.season);
-}
-for (const [period, seasonURL] of seasons) await download(seasonURL, `${outputDirectory}/season-${period}.jpg`);
-
 for (const [index, record] of data.records.entries()) {
   const artworkURL = record.artwork?.episode || record.artwork?.thumbnail;
   const name = new URL(record.url).pathname.split("/").pop();
