@@ -207,13 +207,13 @@ for (const period of [...periods].sort()) {
 
   for (const record of selectedMetadata.filter((item) => item.period === period && item.kind !== "season")) {
     const kind = record.kind ?? "talk";
-    console.log(`${period}\n  ${record.title}${record.speaker ? ` - ${record.speaker}` : ""}`);
+    const sidecarNumber = kind === "talk" ? episodeNumber(record, period) : 0;
+    const sidecarLabel = `${period}${sidecarNumber ? ` #${String(sidecarNumber).padStart(2, "0")}` : ""}`;
+    console.log(`${sidecarLabel} - ${record.title}${record.speaker ? ` - ${record.speaker}` : ""}`);
     let stem = `General Conference - S${code} - ${safeName(record.title)}`;
     let episode = "";
     let directory = seasonDirectory;
     const id = pageID(record.page_url);
-    const sidecarNumber = kind === "talk" ? episodeNumber(record, period) : 0;
-    const sidecarLabel = `${period}${sidecarNumber ? ` #${String(sidecarNumber).padStart(2, "0")}` : ""}`;
     if (kind === "talk") {
       const number = episodeNumber(record, period);
       episodes.set(period, number);
@@ -243,7 +243,7 @@ for (const period of [...periods].sort()) {
     } else {
       directory = `${seasonDirectory}/Sessions`;
       if (!(await hasMedia(directory))) {
-        console.log(`${period}\n  ${record.title} - skipped (no media)`);
+        sidecarLog(sidecarLabel, "skipped (no media)", "");
         continue;
       }
       await mkdir(directory, { recursive: true });
@@ -261,4 +261,3 @@ for (const period of [...periods].sort()) {
     }
   }
 }
-console.log(`Generated sidecars for ${periods.size} seasons`);
