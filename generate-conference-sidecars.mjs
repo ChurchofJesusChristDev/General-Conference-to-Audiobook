@@ -44,7 +44,7 @@ function sidecarStatus(action) {
   return action;
 }
 function sidecarLog(label, name, action) {
-  console.log(`${label}: ${name}${action ? ` ${sidecarStatus(action)}` : ""}`);
+  console.log(`    ${label}: ${name}${action ? ` ${sidecarStatus(action)}` : ""}`);
 }
 function xml(value) { return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function folderCode(period) { return period.replace("-", ""); }
@@ -209,7 +209,7 @@ for (const period of [...periods].sort()) {
     const kind = record.kind ?? "talk";
     const sidecarNumber = kind === "talk" ? episodeNumber(record, period) : 0;
     const sidecarLabel = `${period}${sidecarNumber ? ` #${String(sidecarNumber).padStart(2, "0")}` : ""}`;
-    console.log(`${sidecarLabel} - ${record.title}${record.speaker ? ` - ${record.speaker}` : ""}`);
+
     let stem = `General Conference - S${code} - ${safeName(record.title)}`;
     let episode = "";
     let directory = seasonDirectory;
@@ -230,14 +230,14 @@ for (const period of [...periods].sort()) {
       try { media = await pageMedia(record.page_url); }
       catch (error) { console.warn(`media lookup failed ${record.page_url}: ${error.message}`); }
       action = await ensureFetched(`./data/text/${id}.md`, `${directory}/${stem}.md`, () => fetchMarkdown(record.page_url, record.title));
-      sidecarLog(sidecarLabel, ".md", action);
+      sidecarLog(sidecarLabel, `${stem}.md`, action);
       action = await ensureFetched(`./data/subtitles/${id}.en.vtt`, `${directory}/${stem}.vtt`, async () => {
         const subtitleURL = links.subtitle_urls?.split(" | ")[0] || "";
         return subtitleURL ? fetchText(subtitleURL) : fetchSubtitle(media.videoID);
       });
-      sidecarLog(sidecarLabel, ".vtt", action);
+      sidecarLog(sidecarLabel, `${stem}.vtt`, action);
       action = await ensureFetched(`./data/artwork/${id}.jpg`, `${directory}/${stem}.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
-      sidecarLog(sidecarLabel, ".jpg", action);
+      sidecarLog(sidecarLabel, `${stem}.jpg`, action);
       action = await writeIfChanged(`${directory}/.plexmatch`, `title=${record.title}\ntype=episode\nseason=${code}\nepisode=${episode}\n`);
       sidecarLog(sidecarLabel, ".plexmatch", action);
     } else {
@@ -250,7 +250,7 @@ for (const period of [...periods].sort()) {
     }
     const nfo = `<?xml version="1.0" encoding="UTF-8"?>\n<episodedetails><title>${xml(record.title)}</title><showtitle>General Conference</showtitle><season>${code}</season>${episode ? `<episode>${episode}</episode>` : ""}<plot>${xml(record.description)}</plot>${record.speaker ? `<actor><name>${xml(record.speaker)}</name></actor>` : ""}</episodedetails>\n`;
     action = await writeIfChanged(`${directory}/episode.nfo`, nfo);
-    sidecarLog(sidecarLabel, ".nfo", action);
+    sidecarLog(sidecarLabel, "episode.nfo", action);
     if (kind !== "talk") {
       action = await copyIfPresent(`./data/text/${id}.md`, `${directory}/${stem}.md`);
       sidecarLog(sidecarLabel, ".md", action);
