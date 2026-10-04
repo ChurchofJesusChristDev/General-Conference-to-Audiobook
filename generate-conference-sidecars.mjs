@@ -247,8 +247,8 @@ for (const period of [...periods].sort()) {
         return subtitleURL ? fetchText(subtitleURL) : fetchSubtitle(media.videoID);
       });
       sidecarLog(sidecarLabel, ".vtt", action);
-      action = await ensureFetched("", `${directory}/${stem}.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
-      sidecarLog(sidecarLabel, ".jpg", action);
+      action = await ensureFetched("", `${directory}/poster.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
+      sidecarLog(sidecarLabel, "poster.jpg", action);
       action = await writeIfChanged(`${directory}/.plexmatch`, `title=${record.title}\ntype=episode\nseason=${code}\nepisode=${episode}\n`);
       sidecarLog(sidecarLabel, ".plexmatch", action);
     } else {
@@ -270,8 +270,8 @@ for (const period of [...periods].sort()) {
         return subtitleURL ? fetchText(subtitleURL) : fetchSubtitle(media.videoID);
       });
       sidecarLog(sidecarLabel, ".vtt", action);
-      action = await ensureFetched("", `${directory}/${stem}.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
-      sidecarLog(sidecarLabel, ".jpg", action);
+      action = await ensureFetched("", `${directory}/poster.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
+      sidecarLog(sidecarLabel, "poster.jpg", action);
     }
   }
 }

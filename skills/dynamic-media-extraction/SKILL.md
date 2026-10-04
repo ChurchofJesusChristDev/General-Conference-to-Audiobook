@@ -179,7 +179,7 @@ General Conference/
       .plexmatch
       General Conference - S202604E01 - Introduction.md
       General Conference - S202604E01 - Introduction.vtt
-      General Conference - S202604E01 - Introduction.jpg
+      poster.jpg
 ```
 
 Rules:
@@ -198,8 +198,8 @@ Rules:
 - Generate `season.nfo`, `.plexmatch`, and `poster.jpg` inside each season.
 - Put each talk in its own folder so it can contain episode-level sidecars.
 - Generate `episode.nfo` and `.plexmatch` inside each talk folder.
-- Save episode artwork beside the media file using the exact episode stem and
-  `.jpg` extension.
+- Save episode artwork as `poster.jpg` inside the episode folder, following
+  Plex and Jellyfin folder-art conventions.
 - Keep Markdown and WebVTT files as separate sidecars using the exact episode
   stem, such as `General Conference - S202604E01 - Introduction.md` and
   `General Conference - S202604E01 - Introduction.vtt`.
