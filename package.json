@@ -1,0 +1,11 @@
+{
+  "name": "general-conference-to-audiobook",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "defuddle": "^0.19.3",
+    "jsdom": "^26.1.0",
+    "turndown": "^7.2.0",
+    "turndown-plugin-gfm": "^1.0.0"
+  }
+}
