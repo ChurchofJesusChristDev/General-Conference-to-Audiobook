@@ -210,7 +210,7 @@ for (const period of selectedPeriods) {
   } else if (video) {
     files.push({ type: "audio-extract", label: "audio stream", videoPath: `${directory}/${stem} - ${video.quality}.mp4`, videoURL: video.url, directory });
   }
-  if (files.length) jobs.push({ period: meta.period, episode, title: meta.title, speaker: meta.speaker, stem, directory, files });
+  if (files.length) jobs.push({ period: meta.period, episode, title: meta.title, speaker: meta.speaker, pageURL: meta.page_url, stem, directory, files });
   }
 }
 
@@ -236,6 +236,13 @@ function errorStatus(error) {
   return code ? `${code} ${names[code] ?? "HTTP Error"}` : `failed - ${error.message.split("\n")[0]}`;
 }
 const failedPeriods = new Set();
+let sidecarQueue = Promise.resolve();
+function generateEpisodeSidecars(job) {
+  sidecarQueue = sidecarQueue.then(() => runVisible(process.execPath, [
+    "./generate-conference-sidecars.mjs", envPath, talksPath, job.period, job.period, mediaLinksPath, job.pageURL,
+  ]));
+  return sidecarQueue;
+}
 async function processFile(job, file) {
   if (file.type === "audio-extract") {
     console.log(`    ${itemLabel(job)}: ${await downloadVerb(file.videoPath)} mp4 for audio extraction`);
@@ -258,6 +265,7 @@ async function worker() {
       itemHeader(job);
       await mkdir(job.directory, { recursive: true });
       await Promise.all(job.files.map((file) => processFile(job, file)));
+      if (job.files.some((file) => file.type === "video")) await generateEpisodeSidecars(job);
     } catch (error) {
       failedPeriods.add(job.period);
       if (!(await directoryHasMedia(job.directory))) await rm(job.directory, { recursive: true, force: true });
@@ -267,7 +275,7 @@ async function worker() {
   }
 }
 await Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, worker));
-await runVisible(process.execPath, ["./generate-conference-sidecars.mjs", envPath, talksPath, firstPeriod, lastPeriod, mediaLinksPath]);
+await sidecarQueue;
 for (const period of selectedPeriods) {
   if (failedPeriods.has(period)) continue;
   const code = folderCode(period);

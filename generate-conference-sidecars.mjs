@@ -11,6 +11,7 @@ const metadataPath = process.argv[3] ?? "./data/all/metadata.tsv";
 const firstPeriod = process.argv[4] ?? "1971-04";
 const lastPeriod = process.argv[5] ?? "9999-10";
 const mediaLinksPath = process.argv[6] ?? "./data/media-links.tsv";
+const targetPageURL = process.argv[7] ?? "";
 const env = parseEnv(await readFile(envPath, "utf8"));
 const root = expandHome(env.GENERAL_CONFERENCE_DOWNLOAD_PATH);
 const policyKey = env.GENERAL_CONFERENCE_BRIGHTCOVE_POLICY_KEY;
@@ -147,12 +148,13 @@ async function fetchText(url) {
 }
 
 const metadata = parseTSV(await readFile(metadataPath, "utf8"));
+const selectedMetadata = targetPageURL ? metadata.filter((record) => record.page_url === targetPageURL) : metadata;
 let mediaLinks = [];
 try { mediaLinks = parseTSV(await readFile(mediaLinksPath, "utf8")); }
 catch (error) { if (error.code !== "ENOENT") throw error; }
 const mediaByURL = new Map(mediaLinks.map((row) => [row.page_url, row]));
 const episodes = new Map();
-const periods = new Set(metadata.filter((record) => record.period >= firstPeriod && record.period <= lastPeriod).map((record) => record.period));
+const periods = new Set(selectedMetadata.filter((record) => record.period >= firstPeriod && record.period <= lastPeriod).map((record) => record.period));
 await mkdir(root, { recursive: true });
 let action = await writeIfChanged(`${root}/tvshow.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<tvshow><title>General Conference</title><sorttitle>General Conference</sorttitle><genre>Religious</genre></tvshow>\n`);
 sidecarLog("General Conference", "tvshow.nfo", action);
@@ -184,7 +186,7 @@ for (const period of [...periods].sort()) {
   action = await writeIfChanged(`${seasonDirectory}/.plexmatch`, `title=${label}\ntype=season\nseason=${code}\n`);
   sidecarLog(`Season ${code}`, ".plexmatch", action);
 
-  for (const record of metadata.filter((item) => item.period === period && item.kind !== "season")) {
+  for (const record of selectedMetadata.filter((item) => item.period === period && item.kind !== "season")) {
     const kind = record.kind ?? "talk";
     console.log(`${period}\n  ${record.title}${record.speaker ? ` - ${record.speaker}` : ""}`);
     let stem = `General Conference - S${code} - ${safeName(record.title)}`;
