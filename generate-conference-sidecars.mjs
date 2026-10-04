@@ -12,6 +12,8 @@ const firstPeriod = process.argv[4] ?? "1971-04";
 const lastPeriod = process.argv[5] ?? "9999-10";
 const mediaLinksPath = process.argv[6] ?? "./data/media-links.tsv";
 const targetPageURL = process.argv[7] ?? "";
+const episodeOnly = process.argv.includes("--episode-only");
+const skipShow = process.argv.includes("--skip-show");
 const env = parseEnv(await readFile(envPath, "utf8"));
 const root = expandHome(env.GENERAL_CONFERENCE_DOWNLOAD_PATH);
 const policyKey = env.GENERAL_CONFERENCE_BRIGHTCOVE_POLICY_KEY;
@@ -163,10 +165,13 @@ const mediaByURL = new Map(mediaLinks.map((row) => [row.page_url, row]));
 const episodes = new Map();
 const periods = new Set(selectedMetadata.filter((record) => record.period >= firstPeriod && record.period <= lastPeriod).map((record) => record.period));
 await mkdir(root, { recursive: true });
-let action = await writeIfChanged(`${root}/tvshow.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<tvshow><title>General Conference</title><sorttitle>General Conference</sorttitle><genre>Religious</genre></tvshow>\n`);
-sidecarLog("General Conference", "tvshow.nfo", action);
- action = await writeIfChanged(`${root}/.plexmatch`, "title=General Conference\ntype=show\n");
-sidecarLog("General Conference", ".plexmatch", action);
+let action;
+if (!episodeOnly && !skipShow) {
+  action = await writeIfChanged(`${root}/tvshow.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<tvshow><title>General Conference</title><sorttitle>General Conference</sorttitle><genre>Religious</genre></tvshow>\n`);
+  sidecarLog("General Conference", "tvshow.nfo", action);
+  action = await writeIfChanged(`${root}/.plexmatch`, "title=General Conference\ntype=show\n");
+  sidecarLog("General Conference", ".plexmatch", action);
+}
 
 for (const period of [...periods].sort()) {
   const folder = folderCode(period);
@@ -179,19 +184,21 @@ for (const period of [...periods].sort()) {
     continue;
   }
   await mkdir(seasonDirectory, { recursive: true });
-  const seasonRecord = metadata.find((item) => item.period === period && item.kind !== "season");
-  const seasonLinks = seasonRecord ? mediaByURL.get(seasonRecord.page_url) ?? {} : {};
-  let seasonMedia = {};
-  if (seasonRecord) {
-    try { seasonMedia = await pageMedia(seasonRecord.page_url); }
-    catch (error) { console.warn(`season artwork lookup failed ${period}: ${error.message}`); }
+  if (!episodeOnly) {
+    const seasonRecord = metadata.find((item) => item.period === period && item.kind !== "season");
+    const seasonLinks = seasonRecord ? mediaByURL.get(seasonRecord.page_url) ?? {} : {};
+    let seasonMedia = {};
+    if (seasonRecord) {
+      try { seasonMedia = await pageMedia(seasonRecord.page_url); }
+      catch (error) { console.warn(`season artwork lookup failed ${period}: ${error.message}`); }
+    }
+    action = await ensureFetched("./data/artwork/season.jpg", `${seasonDirectory}/poster.jpg`, () => fetchBinary(seasonLinks.season_artwork_url || seasonMedia.seasonPoster));
+    sidecarLog(`Season ${code}`, "poster.jpg", action);
+    action = await writeIfChanged(`${seasonDirectory}/season.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<season><title>${xml(label)}</title><seasonnumber>${code}</seasonnumber><year>${year}</year></season>\n`);
+    sidecarLog(`Season ${code}`, "season.nfo", action);
+    action = await writeIfChanged(`${seasonDirectory}/.plexmatch`, `title=${label}\ntype=season\nseason=${code}\n`);
+    sidecarLog(`Season ${code}`, ".plexmatch", action);
   }
-  action = await ensureFetched("./data/artwork/season.jpg", `${seasonDirectory}/poster.jpg`, () => fetchBinary(seasonLinks.season_artwork_url || seasonMedia.seasonPoster));
-  sidecarLog(`Season ${code}`, "poster.jpg", action);
-  action = await writeIfChanged(`${seasonDirectory}/season.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<season><title>${xml(label)}</title><seasonnumber>${code}</seasonnumber><year>${year}</year></season>\n`);
-  sidecarLog(`Season ${code}`, "season.nfo", action);
-  action = await writeIfChanged(`${seasonDirectory}/.plexmatch`, `title=${label}\ntype=season\nseason=${code}\n`);
-  sidecarLog(`Season ${code}`, ".plexmatch", action);
 
   for (const record of selectedMetadata.filter((item) => item.period === period && item.kind !== "season")) {
     const kind = record.kind ?? "talk";

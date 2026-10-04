@@ -237,10 +237,18 @@ function errorStatus(error) {
 }
 const failedPeriods = new Set();
 let sidecarQueue = Promise.resolve();
+let showSidecarReady = false;
+const seasonSidecarsReady = new Set();
 function generateEpisodeSidecars(job) {
-  sidecarQueue = sidecarQueue.then(() => runVisible(process.execPath, [
-    "./generate-conference-sidecars.mjs", envPath, talksPath, job.period, job.period, mediaLinksPath, job.pageURL,
-  ]));
+  sidecarQueue = sidecarQueue.then(() => {
+    const args = ["./generate-conference-sidecars.mjs", envPath, talksPath, job.period, job.period, mediaLinksPath, job.pageURL];
+    if (showSidecarReady) args.push("--skip-show");
+    if (seasonSidecarsReady.has(job.period)) args.push("--episode-only");
+    return runVisible(process.execPath, args).then(() => {
+      showSidecarReady = true;
+      seasonSidecarsReady.add(job.period);
+    });
+  });
   return sidecarQueue;
 }
 async function processFile(job, file) {
