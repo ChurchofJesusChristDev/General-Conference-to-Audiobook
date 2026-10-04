@@ -150,7 +150,6 @@ if (options.next) {
   }
   selectedPeriods = incomplete.slice(0, Number(options.next));
 }
-const selectedSet = new Set(selectedPeriods);
 const episodes = new Map();
 const jobs = [];
 const metadataByPeriod = new Map();
@@ -178,30 +177,28 @@ for (const period of selectedPeriods) {
     ? `${root}/Season ${folder}/Sessions`
     : `${root}/Season ${folder}/${stem}`;
   const video = qualityURLs(row)[0];
-  if (video) jobs.push({ type: "video", period: meta.period, title: meta.title, speaker: meta.speaker, stem, path: `${directory}/${stem} - ${video.quality}.mp4`, url: video.url, quality: video.quality });
-    if (row.audio_url) {
-      const audioURL = audioFormat === "m4a" && row.audio_m4a ? row.audio_m4a : row.audio_url;
-      const extension = sourceExtension(audioURL);
-      jobs.push({ type: "audio", period: meta.period, title: meta.title, speaker: meta.speaker, stem, extension, path: `${directory}/${stem}.${extension}`, url: audioURL });
-    } else if (video) {
-      jobs.push({ type: "audio-extract", period: meta.period, title: meta.title, speaker: meta.speaker, stem, videoPath: `${directory}/${stem} - ${video.quality}.mp4`, videoURL: video.url, directory });
-    }
+  const files = [];
+  if (video) files.push({ type: "video", label: `mp4 (${video.quality})`, path: `${directory}/${stem} - ${video.quality}.mp4`, url: video.url, quality: video.quality });
+  if (row.audio_url) {
+    const audioURL = audioFormat === "m4a" && row.audio_m4a ? row.audio_m4a : row.audio_url;
+    const extension = sourceExtension(audioURL);
+    files.push({ type: "audio", label: extension, extension, path: `${directory}/${stem}.${extension}`, url: audioURL });
+  } else if (video) {
+    files.push({ type: "audio-extract", label: "audio stream", videoPath: `${directory}/${stem} - ${video.quality}.mp4`, videoURL: video.url, directory });
+  }
+  if (files.length) jobs.push({ period: meta.period, title: meta.title, speaker: meta.speaker, stem, directory, files });
   }
 }
 
 console.log(`Selected seasons: ${selectedPeriods.join(", ")}`);
-console.log(`Downloading ${jobs.length} files for ${firstPeriod} through ${lastPeriod} with concurrency ${concurrency}`);
+console.log(`Downloading ${jobs.length} items for ${firstPeriod} through ${lastPeriod} with concurrency ${concurrency}`);
 let next = 0;
 let completed = 0;
-const printedItems = new Set();
 function itemHeader(job) {
-  const key = `${job.period}/${job.stem}`;
-  if (printedItems.has(key)) return;
-  printedItems.add(key);
-  console.log(`${job.period}\n  ${job.title}${job.speaker ? ` - ${job.speaker}` : ""}`);
+  console.log(`${completed + 1}/${jobs.length} ${job.period} - ${job.title}${job.speaker ? ` - ${job.speaker}` : ""}`);
 }
 function itemStatus(action) {
-  return action === "exists" ? "checked - skipped" : "downloading - done";
+  return action === "exists" ? "OK (existing)" : "OK";
 }
 function errorStatus(error) {
   const code = error.message.match(/(?:error: |HTTP )([45]\d\d)/i)?.[1];
@@ -209,40 +206,32 @@ function errorStatus(error) {
   return code ? `${code} ${names[code] ?? "HTTP Error"}` : `failed - ${error.message.split("\n")[0]}`;
 }
 const failedPeriods = new Set();
+async function processFile(job, file) {
+  if (file.type === "audio-extract") {
+    console.log("    Downloading mp4 for audio extraction");
+    await download(file.videoURL, file.videoPath);
+    const codec = await runCapture("ffprobe", ["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "default=noprint_wrappers=1:nokey=1", file.videoPath]);
+    const [extension, format] = audioContainer(codec);
+    const outputPath = `${file.directory}/${job.stem}.${extension}`;
+    if (!(await mediaIsValid(outputPath))) await extractAudio(file.videoPath, outputPath, format);
+    console.log(`    ${extension} OK`);
+    return;
+  }
+  console.log(`    Downloading ${file.label}`);
+  const action = await download(file.url, file.path);
+  console.log(`    ${file.type === "video" ? "mp4" : file.extension} ${itemStatus(action)}`);
+}
 async function worker() {
   while (next < jobs.length) {
     const job = jobs[next++];
     try {
       itemHeader(job);
-      await mkdir(job.path.slice(0, job.path.lastIndexOf("/")), { recursive: true });
-      if (job.type === "video") {
-        console.log(`    - ${job.quality}.mp4 - downloading`);
-        const action = await download(job.url, job.path);
-        itemHeader(job);
-        console.log(`    - ${job.quality}.mp4 - ${itemStatus(action)}`);
-        console.log(`    progress ${++completed}/${jobs.length}`);
-      } else if (job.type === "audio-extract") {
-        console.log(`    audio stream - extracting without transcoding`);
-        await download(job.videoURL, job.videoPath);
-        const codec = await runCapture("ffprobe", ["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "default=noprint_wrappers=1:nokey=1", job.videoPath]);
-        const [extension, format] = audioContainer(codec);
-        const outputPath = `${job.directory}/${job.stem}.${extension}`;
-        if (!(await mediaIsValid(outputPath))) await extractAudio(job.videoPath, outputPath, format);
-        itemHeader(job);
-        console.log(`    .${extension} - extracted stream-copy - done`);
-        console.log(`    progress ${++completed}/${jobs.length}`);
-      } else {
-        console.log(`    .${job.extension} - downloading`);
-        const action = await download(job.url, job.path);
-        itemHeader(job);
-        console.log(`    .${job.extension} - ${itemStatus(action)}`);
-        console.log(`    progress ${++completed}/${jobs.length}`);
-      }
+      await mkdir(job.directory, { recursive: true });
+      await Promise.all(job.files.map((file) => processFile(job, file)));
+      console.log(`    progress ${++completed}/${jobs.length}`);
     } catch (error) {
       failedPeriods.add(job.period);
-      itemHeader(job);
-      const suffix = job.type === "video" ? ` - ${job.quality}.mp4` : `.${job.extension}`;
-      console.log(`    ${suffix} - ${errorStatus(error)}`);
+      console.log(`    FAILED - ${errorStatus(error)}`);
       console.warn(`FAILED ${job.period} ${job.title}: ${error.message.split("\n")[0]}`);
     }
   }
