@@ -2,8 +2,8 @@
 
 import { readFile, writeFile } from "node:fs/promises";
 
-const outputPath = process.argv[2] ?? "./data/media-links.tsv";
-const conferencesPath = process.argv[3] ?? "./data/conferences.tsv";
+const outputPath = process.argv[2] ?? "./cache/media-links.tsv";
+const conferencesPath = process.argv[3] ?? "./conferences.tsv";
 const landingURL = "https://www.churchofjesuschrist.org/study/general-conference?lang=eng";
 const headers = { "user-agent": "General-Conference-to-Audiobook/1.0" };
 const canonical = (href) => { const url = new URL(href); url.search = "?lang=eng"; url.hash = ""; return url.href; };

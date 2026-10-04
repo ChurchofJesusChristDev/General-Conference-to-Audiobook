@@ -2,8 +2,8 @@
 
 import { readFile, writeFile } from "node:fs/promises";
 
-const metadataPath = process.argv[2] ?? "./data/all/metadata.tsv";
-const urlsPath = process.argv[3] ?? "./data/all/urls.tsv";
+const metadataPath = process.argv[2] ?? "./cache/all/metadata.tsv";
+const urlsPath = process.argv[3] ?? "./cache/all/urls.tsv";
 const outputPath = process.argv[4] ?? "./talks.tsv";
 const parse = (text) => {
   const lines = text.trimEnd().split("\n");

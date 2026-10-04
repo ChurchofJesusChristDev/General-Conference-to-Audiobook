@@ -3,7 +3,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 
 const talksPath = process.argv[2] ?? "./talks.tsv";
-const outputPath = process.argv[3] ?? "./data/media-links.tsv";
+const outputPath = process.argv[3] ?? "./cache/media-links.tsv";
 const refresh = process.argv.includes("--refresh");
 const firstPeriod = process.argv[4] ?? "0000-00";
 const lastPeriod = process.argv[5] ?? "9999-99";

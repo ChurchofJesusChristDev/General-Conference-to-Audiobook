@@ -1,11 +1,11 @@
 # General Conference to Audiobook
 
-Download General Conference talks from ChurchofJesusChrist.org and organize them
-for audiobook apps, Plex, or Jellyfin.
+Download General Conference talks from ChurchofJesusChrist.org and organize
+them for audiobook apps, Plex, or Jellyfin.
 
-The old browser-console downloader is retired. The current workflow extracts
-metadata and media links from the site's encoded page state, then downloads
-selected seasons with resumable files.
+The workflow uses TSV catalogs and cache files. `conferences.tsv` is permanent
+catalog data. `./cache/` contains resumable metadata and media-link checkpoints.
+No JSON files are used.
 
 ## Requirements
 
@@ -14,124 +14,99 @@ selected seasons with resumable files.
 - `ffmpeg` and `ffprobe`
 - A project-local environment file based on [`example.env`](./example.env)
 
-Set these values in the environment file:
-
 ```sh
 export GENERAL_CONFERENCE_DOWNLOAD_PATH="$HOME/Videos/General Conference"
 export GENERAL_CONFERENCE_VIDEO_QUALITY="720p"
 export GENERAL_CONFERENCE_AUDIO_FORMAT="m4a"
 ```
 
-The Brightcove policy key is only needed for subtitle extraction:
+## Build TSV catalogs
 
-```sh
-export GENERAL_CONFERENCE_BRIGHTCOVE_POLICY_KEY="..."
-```
-
-Do not commit a real environment file or secret values.
-
-## Build the catalogs
-
-Crawl the conference indexes and save resumable TSV checkpoints:
+Crawl conference indexes into resumable cache TSVs:
 
 ```sh
 node crawl-general-conference-tsv.mjs \
   'https://www.churchofjesuschrist.org/study/general-conference?lang=eng' \
-  ./data/all
+  ./cache/all
 ```
 
-Export the stable talk catalog:
+Export the permanent talk catalog:
 
 ```sh
-node export-talks-tsv.mjs ./data/all/metadata.tsv ./data/all/urls.tsv ./talks.tsv
+node export-talks-tsv.mjs \
+  ./cache/all/metadata.tsv ./cache/all/urls.tsv ./talks.tsv
 ```
 
-`talks.tsv`, `presidents.tsv`, and `conferences.tsv` are stable catalogs.
-Generated media URLs belong in `data/`, not in the permanent talk catalog.
-
-## Extract media
-
-For one conference page, use the no-browser extractor:
+Refresh media links:
 
 ```sh
-node extract-media-links-cli.mjs \
-  'https://www.churchofjesuschrist.org/study/general-conference/2025/04?lang=eng' \
-  ./data/media-links.json
+node crawl-media-links-tsv.mjs \
+  ./talks.tsv ./cache/media-links.tsv false 1971-04 2026-04
 ```
 
-The extractor can be rerun. It writes a checkpoint after each successful page.
-The CDP extractor, `extract-media-links.mjs`, is available when browser-rendered
-controls are needed and expects Brave Beta's CDP endpoint on localhost.
-
-For the catalog workflow, refresh links for a period range with:
+Update season poster URLs from the main and decade index pages:
 
 ```sh
-node crawl-media-links-tsv.mjs ./talks.tsv ./data/media-links.tsv false 1971-04 2026-04
+node update-season-artwork-tsv.mjs \
+  ./cache/media-links.tsv ./conferences.tsv
 ```
 
-## Download and create sidecars
+This updates `poster_url` in the permanent `conferences.tsv` catalog and
+`season_artwork_url` in the keyed media-link TSV.
 
-Download one season, a range, or the next incomplete seasons:
+## Download media and sidecars
 
 ```sh
 node download-conference-seasons.mjs \
   --env ./example.env \
-  --talks ./data/all/metadata.tsv \
-  --media ./data/media-links.tsv \
+  --talks ./talks.tsv \
+  --media ./cache/media-links.tsv \
   --start 2025-04 \
   --end 2025-04
-
-node download-conference-seasons.mjs \
-  --env ./example.env \
-  --talks ./data/all/metadata.tsv \
-  --media ./data/media-links.tsv \
-  --next 1
 ```
 
-Downloads use visible `.part` files and are published only after `ffprobe`
-validation. A `download.complete` marker is written only when the selected
-season finishes successfully. The downloader runs the sidecar generator after
-the media pass.
+With no range, the downloader starts at the latest non-future conference and
+ends at `1971-04`. Use `--next N` for the next incomplete seasons.
 
-Sidecars include:
+Downloads are atomic and resumable. M4A is preferred when available, with MP3
+fallback. If no audio URL exists, audio is extracted from the downloaded video
+with stream copy only. Episode WebVTT, artwork, Markdown, NFO, and Plex/Jellyfin
+sidecars are created in the episode folder after media succeeds.
 
-- `tvshow.nfo`, season and episode NFO files
-- `.plexmatch` files
-- Markdown talk text
-- WebVTT subtitles
-- Episode and season artwork
+## Plex/Jellyfin layout
 
-The supporting tools are:
-
-```sh
-node add-subtitle-links.mjs ./data/media-links.json
-node download-subtitles.mjs ./data/media-links.json ./data/subtitles
-node defuddle-conference-text.mjs ./data/media-links.json ./data/text
-node download-artwork.mjs ./data/media-links.json ./data/artwork
-node generate-conference-sidecars.mjs ./example.env ./data/all/metadata.tsv
+```text
+General Conference/
+  tvshow.nfo
+  .plexmatch
+  poster.jpg
+  Season 202604/
+    season.nfo
+    .plexmatch
+    poster.jpg
+    General Conference - S202604E01 - Introduction/
+      General Conference - S202604E01 - Introduction.m4a
+      General Conference - S202604E01 - Introduction - 720p.mp4
+      episode.nfo
+      .plexmatch
+      poster.jpg
+      General Conference - S202604E01 - Introduction.md
+      General Conference - S202604E01 - Introduction.vtt
 ```
-
-Run the compatibility matrix against 1971-04, 2000-04, 2025-04, and 2026-04
-before a full crawl. Keep generated downloads and credentials outside the Git
-commit unless they are explicitly intended as release artifacts.
 
 ## Convert to an audiobook
 
-The downloader creates one audio file per talk. M4A is preferred when the site
-provides it; MP3 is used as a fallback. To make one audiobook:
-
 1. Open **AudioBookBinder** from the App Store.
-2. Add the talk audio files from one `Season YYYYMM` folder in episode order.
-3. Add the season artwork, such as `poster.jpg`.
-4. Set the title to the conference season and export one `.m4b` audiobook.
-5. Load the result into Bound, Apple Books, or another audiobook app.
+2. Add one season's talk audio files in episode order.
+3. Add the season artwork and export an `.m4b` audiobook.
+4. Load it into Bound, Apple Books, or another audiobook app.
 
-The generated Plex/Jellyfin sidecars can be used instead when you want each
-talk to remain a separate episode.
+The generated Plex/Jellyfin sidecars can be used instead when each talk should
+remain a separate episode.
 
 ## Download pre-converted files
 
-- [October 2023 General Conference.m4b](https://github.com/ChurchofJesusChristDev/General-Conference-as-Audiobook/raw/main/October%202023%20General%20Conference.m4b)
+- [October 2023 General Conference.m4b](https://github.com/ChurchofJesusChristDev/General-Conference-to-Audiobook/raw/main/October%202023%20General%20Conference.m4b)
 
 ## Other resources
 

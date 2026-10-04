@@ -109,7 +109,7 @@ General Conference/
 
 9. **Use deterministic sidecar names**
    - Base names on the episode or content number.
-   - Example: `data/text/1-01.md` and `data/subtitles/1-01.en.vtt`.
+   - Example: `cache/text/1-01.md` and `cache/subtitles/1-01.en.vtt`.
    - Keep session recordings and individual talks distinct.
 
 10. **Make extraction resumable**
@@ -117,10 +117,10 @@ General Conference/
     - Skip URLs already present in the manifest.
     - Continue past one-page failures and report them.
     - Process pages in increasing batches such as 1, 2, 4, 8, and so on.
-    - Use TSV as the operational media manifest. JSON is only an import or
-      recovery format when a one-off merge is needed.
-    - Upsert subtitle, season-artwork, and episode-artwork URLs into the TSV;
-      do not require a legacy JSON file during normal downloads.
+    - Use TSV as the only operational media manifest.
+    - Upsert subtitle, season-artwork, and episode-artwork URLs into the TSV.
+    - Keep ephemeral asset IDs and checkpoints under `cache/`; keep permanent
+      catalogs such as `conferences.tsv` at the project root.
 
 ## Download destination and atomic files
 
@@ -260,7 +260,7 @@ stable catalogs with opaque media IDs or CDN URLs.
 
 ## Manifest guidance
 
-JSON is useful as the canonical manifest while the schema is being discovered. A flattened TSV can be generated later with columns for:
+TSV is the canonical manifest with columns for:
 
 - episode number
 - title
@@ -272,7 +272,7 @@ JSON is useful as the canonical manifest while the schema is being discovered. A
 - subtitle URL
 - media IDs
 
-Keep Markdown and WebVTT contents in sidecar files. Store only their deterministic file names in TSV or JSON.
+Keep Markdown and WebVTT contents in sidecar files. Store only their deterministic file names in TSV.
 
 ## Compatibility test matrix
 

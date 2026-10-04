@@ -7,11 +7,11 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 const envPath = process.argv[2] ?? "./oneal.env";
-const metadataPath = process.argv[3] ?? "./data/all/metadata.tsv";
+const metadataPath = process.argv[3] ?? "./cache/all/metadata.tsv";
 const firstPeriod = process.argv[4] ?? "1971-04";
 const lastPeriod = process.argv[5] ?? "9999-10";
-const mediaLinksPath = process.argv[6] ?? "./data/media-links.tsv";
-const conferencesPath = process.argv[7] ?? "./data/conferences.tsv";
+const mediaLinksPath = process.argv[6] ?? "./cache/media-links.tsv";
+const conferencesPath = process.argv[7] ?? "./conferences.tsv";
 const targetPageURL = process.argv[8] ?? "";
 const conferenceIndexURL = "https://www.churchofjesuschrist.org/study/general-conference?lang=eng";
 const episodeOnly = process.argv.includes("--episode-only");

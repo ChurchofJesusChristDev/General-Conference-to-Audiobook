@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 const options = parseArguments(process.argv.slice(2));
 const envPath = options.env ?? "./oneal.env";
 const talksPath = options.talks ?? options.metadata ?? "./talks.tsv";
-const mediaLinksPath = options.media ?? options.urls ?? "./data/media-links.tsv";
+const mediaLinksPath = options.media ?? options.urls ?? "./cache/media-links.tsv";
 function latestAvailablePeriod(date = new Date()) {
   const year = date.getFullYear();
   const month = date.getMonth() + 1;
@@ -241,7 +241,7 @@ let showSidecarReady = false;
 const seasonSidecarsReady = new Set();
 function generateEpisodeSidecars(job) {
   sidecarQueue = sidecarQueue.then(() => {
-    const args = ["./generate-conference-sidecars.mjs", envPath, talksPath, job.period, job.period, mediaLinksPath, "./data/conferences.tsv", job.pageURL];
+    const args = ["./generate-conference-sidecars.mjs", envPath, talksPath, job.period, job.period, mediaLinksPath, "./conferences.tsv", job.pageURL];
     if (showSidecarReady) args.push("--skip-show");
     if (seasonSidecarsReady.has(job.period)) args.push("--episode-only");
     return runVisible(process.execPath, args).then(() => {
