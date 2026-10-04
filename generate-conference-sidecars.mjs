@@ -131,6 +131,11 @@ async function copyIfPresent(source, target) {
   }
 }
 async function ensureFetched(source, target, fetcher) {
+  try {
+    if ((await stat(target)).size > 0) return "checked";
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
   if (source) {
     const copied = await copyIfPresent(source, target);
     if (copied !== "missing") return copied;
