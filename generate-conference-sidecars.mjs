@@ -12,6 +12,7 @@ const firstPeriod = process.argv[4] ?? "1971-04";
 const lastPeriod = process.argv[5] ?? "9999-10";
 const mediaLinksPath = process.argv[6] ?? "./data/media-links.tsv";
 const targetPageURL = process.argv[7] ?? "";
+const showPosterURL = "https://www.churchofjesuschrist.org/imgs/0fd2691a8a019111765601085628ed5183d2c812/full/200%2C/0/default";
 const episodeOnly = process.argv.includes("--episode-only");
 const skipShow = process.argv.includes("--skip-show");
 const env = parseEnv(await readFile(envPath, "utf8"));
@@ -193,6 +194,7 @@ const periods = new Set(selectedMetadata.filter((record) => record.period >= fir
 await mkdir(root, { recursive: true });
 let action;
 if (!episodeOnly && !skipShow) {
+  await ensureSidecar("General Conference", "poster.jpg", `${root}/poster.jpg`, () => fetchBinary(showPosterURL));
   action = await writeIfChanged(`${root}/tvshow.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<tvshow><title>General Conference</title><sorttitle>General Conference</sorttitle><genre>Religious</genre></tvshow>\n`);
   sidecarLog("General Conference", "tvshow.nfo", action);
   action = await writeIfChanged(`${root}/.plexmatch`, "title=General Conference\ntype=show\n");

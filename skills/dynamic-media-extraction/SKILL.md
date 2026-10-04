@@ -165,8 +165,10 @@ Write a non-hidden completion marker only after every selected file succeeds.
 After each episode's media download, fetch its available WebVTT and JPEG
 artwork, then generate that episode's sidecars. Generate `tvshow.nfo`, show
 `.plexmatch`, season `season.nfo`, season `.plexmatch`, and the season poster
-once per applicable show/season, not once per episode. Do not generate a show
-poster. Select season posters from the current conference index or its decade
+once per applicable show/season, not once per episode. Use the configured
+series poster for the show poster. The current series poster is:
+  `https://www.churchofjesuschrist.org/imgs/0fd2691a8a019111765601085628ed5183d2c812/full/200%2C/0/default`. Select season posters from the current
+conference index or its decade
 index, not from an individual talk page. Generate episode `.nfo`,
 episode `.plexmatch`, Markdown, WebVTT, and episode artwork only after at least
 one video file for that episode is complete. Sidecar generation must be safe to
@@ -182,6 +184,7 @@ use this layout:
 General Conference/
   tvshow.nfo
   .plexmatch
+  poster.jpg
   Season 202604/
     season.nfo
     .plexmatch
