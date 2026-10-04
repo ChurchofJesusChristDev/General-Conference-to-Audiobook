@@ -153,11 +153,12 @@ for (const period of [...periods].sort()) {
   }
 
   for (const record of metadata.filter((item) => item.period === period && item.kind !== "season")) {
+    const kind = record.kind ?? "talk";
     console.log(`${period}\n  ${record.title}${record.speaker ? ` - ${record.speaker}` : ""}`);
     let stem = `General Conference - S${code} - ${safeName(record.title)}`;
     let episode = "";
     let directory = seasonDirectory;
-    if (record.kind === "talk") {
+    if (kind === "talk") {
       const number = (episodes.get(period) ?? 0) + 1;
       episodes.set(period, number);
       episode = String(number).padStart(2, "0");

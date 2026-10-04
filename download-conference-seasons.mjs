@@ -161,19 +161,20 @@ for (const meta of metadata) {
 for (const period of selectedPeriods) {
   for (const meta of metadataByPeriod.get(period) ?? []) {
     if (meta.kind === "season") continue;
+    const kind = meta.kind ?? "talk";
   const row = byURL.get(meta.page_url);
   if (!row) continue;
   const folder = folderCode(meta.period);
   const prefix = `General Conference - S${folder}`;
   let stem = `${prefix} - ${safeName(meta.title)}`;
-  if (meta.kind === "talk") {
+  if (kind === "talk") {
     const number = (episodes.get(meta.period) ?? 0) + 1;
     episodes.set(meta.period, number);
     stem = `${prefix}E${String(number).padStart(2, "0")} - ${safeName(meta.title)}`;
   } else {
     stem = `${prefix} - ${safeName(meta.title)}`;
   }
-  const directory = meta.kind === "session"
+  const directory = kind === "session"
     ? `${root}/Season ${folder}/Sessions`
     : `${root}/Season ${folder}/${stem}`;
   const video = qualityURLs(row)[0];
