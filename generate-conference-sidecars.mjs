@@ -192,6 +192,10 @@ for (const period of [...periods].sort()) {
   }
   await mkdir(seasonDirectory, { recursive: true });
   if (!episodeOnly) {
+    const seasonRecord = metadata.find((item) => item.period === period && item.kind !== "season");
+    const seasonLinks = seasonRecord ? mediaByURL.get(seasonRecord.page_url) ?? {} : {};
+    action = await ensureFetched("", `${seasonDirectory}/poster.jpg`, () => fetchBinary(seasonLinks.season_artwork_url));
+    sidecarLog(`Season ${code}`, "poster.jpg", action);
     action = await writeIfChanged(`${seasonDirectory}/season.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<season><title>${xml(label)}</title><seasonnumber>${code}</seasonnumber><year>${year}</year></season>\n`);
     sidecarLog(`Season ${code}`, "season.nfo", action);
     action = await writeIfChanged(`${seasonDirectory}/.plexmatch`, `title=${label}\ntype=season\nseason=${code}\n`);

@@ -10,9 +10,22 @@ Use this workflow to turn a dynamic content site into a local, resumable media m
 
 ## Index structure
 
-Use this reference when labeling conference ranges by Church presidency:
+Use these references when labeling conference ranges and selecting season artwork:
 
-<https://newsroom.churchofjesuschrist.org/article/church-presidents>
+- Presidents: <https://newsroom.churchofjesuschrist.org/article/church-presidents>
+- Recent conference indexes: <https://www.churchofjesuschrist.org/study/general-conference?lang=eng>
+- Older conference decade indexes, such as:
+  <https://www.churchofjesuschrist.org/study/general-conference/19711979?lang=eng>
+
+Season poster rules:
+
+- Match the season card link (`/general-conference/YYYY/04` or `/10`) to the
+  season period.
+- Read the poster from that season card's `<img>`, not from a talk page's
+  `og:image` or video poster.
+- Prefer the largest URL in the card's `srcSet`; use `src` only when no
+  `srcSet` exists.
+- Store the selected URL in `season_artwork_url` in the TSV.
 
 General Conference-style sites commonly expose multiple indexes:
 
@@ -151,9 +164,10 @@ Write a non-hidden completion marker only after every selected file succeeds.
 
 After each episode's media download, fetch its available WebVTT and JPEG
 artwork, then generate that episode's sidecars. Generate `tvshow.nfo`, show
-`.plexmatch`, season `season.nfo`, and season `.plexmatch` once per
-applicable show/season, not once per episode. Do not generate show or season
-poster files. Generate episode `.nfo`,
+`.plexmatch`, season `season.nfo`, season `.plexmatch`, and the season poster
+once per applicable show/season, not once per episode. Do not generate a show
+poster. Select season posters from the current conference index or its decade
+index, not from an individual talk page. Generate episode `.nfo`,
 episode `.plexmatch`, Markdown, WebVTT, and episode artwork only after at least
 one video file for that episode is complete. Sidecar generation must be safe to
 rerun and must log the episode once, followed by indented file statuses such as
@@ -171,6 +185,7 @@ General Conference/
   Season 202604/
     season.nfo
     .plexmatch
+    poster.jpg
     General Conference - S202604E01 - Introduction/
       General Conference - S202604E01 - Introduction.m4a
       General Conference - S202604E01 - Introduction - 720p.mp4
