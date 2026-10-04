@@ -3,6 +3,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 
 const outputPath = process.argv[2] ?? "./data/media-links.tsv";
+const conferencesPath = process.argv[3] ?? "./data/conferences.tsv";
 const landingURL = "https://www.churchofjesuschrist.org/study/general-conference?lang=eng";
 const headers = { "user-agent": "General-Conference-to-Audiobook/1.0" };
 const canonical = (href) => { const url = new URL(href); url.search = "?lang=eng"; url.hash = ""; return url.href; };
@@ -51,4 +52,20 @@ for (const row of table.rows) {
 }
 const tsv = (row) => table.headers.map((header) => clean(row[header])).join("\t");
 await writeFile(outputPath, `${table.headers.join("\t")}\n${table.rows.map(tsv).join("\n")}\n`);
+let conferenceText;
+try { conferenceText = await readFile(conferencesPath, "utf8"); }
+catch (error) { if (error.code !== "ENOENT") throw error; }
+if (conferenceText) {
+  const conferences = parseTSV(conferenceText);
+  if (!conferences.headers.includes("poster_url")) conferences.headers.push("poster_url");
+  let conferenceUpdates = 0;
+  for (const row of conferences.rows) {
+    if (!artwork.has(row.period)) continue;
+    row.poster_url = artwork.get(row.period);
+    conferenceUpdates++;
+  }
+  const conferenceTSV = (row) => conferences.headers.map((header) => clean(row[header])).join("\t");
+  await writeFile(conferencesPath, `${conferences.headers.join("\t")}\n${conferences.rows.map(conferenceTSV).join("\n")}\n`);
+  console.log(`Updated ${conferenceUpdates}/${conferences.rows.length} conference catalog rows`);
+}
 console.log(`Updated ${updated}/${table.rows.length} rows from ${artwork.size} index-page season posters`);

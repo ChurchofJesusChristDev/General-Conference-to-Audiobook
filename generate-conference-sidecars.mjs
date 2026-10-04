@@ -11,8 +11,9 @@ const metadataPath = process.argv[3] ?? "./data/all/metadata.tsv";
 const firstPeriod = process.argv[4] ?? "1971-04";
 const lastPeriod = process.argv[5] ?? "9999-10";
 const mediaLinksPath = process.argv[6] ?? "./data/media-links.tsv";
-const targetPageURL = process.argv[7] ?? "";
-const showPosterURL = "https://www.churchofjesuschrist.org/imgs/0fd2691a8a019111765601085628ed5183d2c812/full/200%2C/0/default";
+const conferencesPath = process.argv[7] ?? "./data/conferences.tsv";
+const targetPageURL = process.argv[8] ?? "";
+const conferenceIndexURL = "https://www.churchofjesuschrist.org/study/general-conference?lang=eng";
 const episodeOnly = process.argv.includes("--episode-only");
 const skipShow = process.argv.includes("--skip-show");
 const env = parseEnv(await readFile(envPath, "utf8"));
@@ -65,6 +66,17 @@ async function fetchHTML(url) {
   const response = await fetch(url, { headers: { "user-agent": "General-Conference-to-Audiobook/1.0" } });
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
   return response.text();
+}
+function largestImageURL(tag) {
+  const srcSet = tag.match(/srcSet="([^"]+)"/i)?.[1] ?? "";
+  const candidates = srcSet.split(",").map((value) => value.trim().split(/\s+/)[0]).filter(Boolean);
+  return candidates.at(-1) ?? tag.match(/src="([^"]+)"/i)?.[1] ?? "";
+}
+async function indexShowPoster() {
+  const html = await fetchHTML(conferenceIndexURL);
+  const tag = html.match(/<img\b[^>]*alt="The Church of Jesus Christ of Latter-day Saints"[^>]*>/i)?.[0];
+  if (!tag) throw new Error("show poster not found on conference index");
+  return largestImageURL(tag);
 }
 function initialState(html) {
   const match = html.match(/window\.__INITIAL_STATE__="([^"]+)"/);
@@ -184,6 +196,10 @@ let mediaLinks = [];
 try { mediaLinks = parseTSV(await readFile(mediaLinksPath, "utf8")); }
 catch (error) { if (error.code !== "ENOENT") throw error; }
 const mediaByURL = new Map(mediaLinks.map((row) => [row.page_url, row]));
+let conferences = [];
+try { conferences = parseTSV(await readFile(conferencesPath, "utf8")); }
+catch (error) { if (error.code !== "ENOENT") throw error; }
+const conferenceByPeriod = new Map(conferences.map((row) => [row.period, row]));
 const episodes = new Map();
 function episodeNumber(record, period) {
   const talks = metadata.filter((item) => item.period === period && (item.kind ?? "talk") === "talk");
@@ -194,6 +210,9 @@ const periods = new Set(selectedMetadata.filter((record) => record.period >= fir
 await mkdir(root, { recursive: true });
 let action;
 if (!episodeOnly && !skipShow) {
+  let showPosterURL = "";
+  try { showPosterURL = await indexShowPoster(); }
+  catch (error) { console.warn(`show artwork lookup failed: ${error.message}`); }
   await ensureSidecar("General Conference", "poster.jpg", `${root}/poster.jpg`, () => fetchBinary(showPosterURL));
   action = await writeIfChanged(`${root}/tvshow.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<tvshow><title>General Conference</title><sorttitle>General Conference</sorttitle><genre>Religious</genre></tvshow>\n`);
   sidecarLog("General Conference", "tvshow.nfo", action);
@@ -215,7 +234,7 @@ for (const period of [...periods].sort()) {
   if (!episodeOnly) {
     const seasonRecord = metadata.find((item) => item.period === period && item.kind !== "season");
     const seasonLinks = seasonRecord ? mediaByURL.get(seasonRecord.page_url) ?? {} : {};
-    await ensureSidecar(`Season ${code}`, "poster.jpg", `${seasonDirectory}/poster.jpg`, () => fetchBinary(seasonLinks.season_artwork_url));
+    await ensureSidecar(`Season ${code}`, "poster.jpg", `${seasonDirectory}/poster.jpg`, () => fetchBinary(conferenceByPeriod.get(period)?.poster_url || seasonLinks.season_artwork_url));
     action = await writeIfChanged(`${seasonDirectory}/season.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<season><title>${xml(label)}</title><seasonnumber>${code}</seasonnumber><year>${year}</year></season>\n`);
     sidecarLog(`Season ${code}`, "season.nfo", action);
     action = await writeIfChanged(`${seasonDirectory}/.plexmatch`, `title=${label}\ntype=season\nseason=${code}\n`);

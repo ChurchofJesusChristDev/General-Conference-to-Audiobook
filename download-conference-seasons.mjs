@@ -241,7 +241,7 @@ let showSidecarReady = false;
 const seasonSidecarsReady = new Set();
 function generateEpisodeSidecars(job) {
   sidecarQueue = sidecarQueue.then(() => {
-    const args = ["./generate-conference-sidecars.mjs", envPath, talksPath, job.period, job.period, mediaLinksPath, job.pageURL];
+    const args = ["./generate-conference-sidecars.mjs", envPath, talksPath, job.period, job.period, mediaLinksPath, "./data/conferences.tsv", job.pageURL];
     if (showSidecarReady) args.push("--skip-show");
     if (seasonSidecarsReady.has(job.period)) args.push("--episode-only");
     return runVisible(process.execPath, args).then(() => {
