@@ -40,7 +40,8 @@ function parseTSV(text) {
 function safeName(value) { return value.replace(/[/:*?"<>|\\]+/g, "-").replace(/\s+/g, " ").trim(); }
 function sidecarStatus(action) {
   if (action === "checked" || action === "copied") return "OK";
-  if (action === "generated" || action === "downloaded") return "updated";
+  if (action === "generated") return "generated";
+  if (action === "downloaded") return "OK";
   return action;
 }
 function sidecarLog(label, name, action) {
@@ -150,6 +151,19 @@ async function ensureFetched(source, target, fetcher) {
     return "unavailable";
   }
 }
+async function ensureSidecar(label, name, target, fetcher) {
+  try {
+    if ((await stat(target)).size > 0) {
+      sidecarLog(label, name, "checked");
+      return;
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  sidecarLog(label, name, "downloading");
+  const action = await ensureFetched("", target, fetcher);
+  sidecarLog(label, name, action === "downloaded" ? "OK" : action);
+}
 async function fetchBinary(url) {
   if (!url) return "";
   const response = await fetch(url);
@@ -199,8 +213,7 @@ for (const period of [...periods].sort()) {
   if (!episodeOnly) {
     const seasonRecord = metadata.find((item) => item.period === period && item.kind !== "season");
     const seasonLinks = seasonRecord ? mediaByURL.get(seasonRecord.page_url) ?? {} : {};
-    action = await ensureFetched("", `${seasonDirectory}/poster.jpg`, () => fetchBinary(seasonLinks.season_artwork_url));
-    sidecarLog(`Season ${code}`, "poster.jpg", action);
+    await ensureSidecar(`Season ${code}`, "poster.jpg", `${seasonDirectory}/poster.jpg`, () => fetchBinary(seasonLinks.season_artwork_url));
     action = await writeIfChanged(`${seasonDirectory}/season.nfo`, `<?xml version="1.0" encoding="UTF-8"?>\n<season><title>${xml(label)}</title><seasonnumber>${code}</seasonnumber><year>${year}</year></season>\n`);
     sidecarLog(`Season ${code}`, "season.nfo", action);
     action = await writeIfChanged(`${seasonDirectory}/.plexmatch`, `title=${label}\ntype=season\nseason=${code}\n`);
@@ -230,15 +243,12 @@ for (const period of [...periods].sort()) {
         continue;
       }
       await mkdir(directory, { recursive: true });
-      action = await ensureFetched("", `${directory}/${stem}.md`, () => fetchMarkdown(record.page_url, record.title));
-      sidecarLog(sidecarLabel, ".md", action);
-      action = await ensureFetched("", `${directory}/${stem}.vtt`, async () => {
+      await ensureSidecar(sidecarLabel, ".md", `${directory}/${stem}.md`, () => fetchMarkdown(record.page_url, record.title));
+      await ensureSidecar(sidecarLabel, ".vtt", `${directory}/${stem}.vtt`, async () => {
         const subtitleURL = links.subtitle_urls?.split(" | ")[0] || "";
         return subtitleURL ? fetchText(subtitleURL) : fetchSubtitle(media.videoID);
       });
-      sidecarLog(sidecarLabel, ".vtt", action);
-      action = await ensureFetched("", `${directory}/poster.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
-      sidecarLog(sidecarLabel, "poster.jpg", action);
+      await ensureSidecar(sidecarLabel, "poster.jpg", `${directory}/poster.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
       action = await writeIfChanged(`${directory}/.plexmatch`, `title=${record.title}\ntype=episode\nseason=${code}\nepisode=${episode}\n`);
       sidecarLog(sidecarLabel, ".plexmatch", action);
     } else {
@@ -253,15 +263,12 @@ for (const period of [...periods].sort()) {
     action = await writeIfChanged(`${directory}/episode.nfo`, nfo);
     sidecarLog(sidecarLabel, "episode.nfo", action);
     if (kind !== "talk") {
-      action = await ensureFetched("", `${directory}/${stem}.md`, () => fetchMarkdown(record.page_url, record.title));
-      sidecarLog(sidecarLabel, ".md", action);
-      action = await ensureFetched("", `${directory}/${stem}.vtt`, async () => {
+      await ensureSidecar(sidecarLabel, ".md", `${directory}/${stem}.md`, () => fetchMarkdown(record.page_url, record.title));
+      await ensureSidecar(sidecarLabel, ".vtt", `${directory}/${stem}.vtt`, async () => {
         const subtitleURL = links.subtitle_urls?.split(" | ")[0] || "";
         return subtitleURL ? fetchText(subtitleURL) : fetchSubtitle(media.videoID);
       });
-      sidecarLog(sidecarLabel, ".vtt", action);
-      action = await ensureFetched("", `${directory}/poster.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
-      sidecarLog(sidecarLabel, "poster.jpg", action);
+      await ensureSidecar(sidecarLabel, "poster.jpg", `${directory}/poster.jpg`, () => fetchBinary(links.episode_artwork_url || media.poster));
     }
   }
 }
