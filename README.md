@@ -1,60 +1,113 @@
-# Download General Conference <br> (and convert to Audiobook)
+# General Conference to Audiobook
 
-How to convert the official General Conference website listing into an \
-unofficial Audiobook for easy listening on any device, in any app.
+Download General Conference talks from ChurchofJesusChrist.org and organize them for audiobook apps, Plex, or Jellyfin.
 
-**UPDATES**
-- October 2023 - no changes, still works as-is
-- April 2022 - updated selectors for new site
+The project has exactly two libraries and three entrypoints:
 
-## Download Pre-Converted Files
+| Path | Purpose |
+|---|---|
+| `lib/general-conference-metadata.mjs` | Site-specific page, state, player, artwork, and subtitle parsing |
+| `lib/general-conference-downloader.mjs` | Generic media and local sidecar operations |
+| `general-conference-browser.js` | Paste into a conference page; downloads TSV, POSIX sh, and PowerShell files |
+| `update-general-conference.mjs` | Local metadata updater and resumable TSV writer |
+| `download-general-conference.mjs` | Local media downloader, naming, and sidecar orchestration |
 
-- [October 2023 General Conference.m4b](https://github.com/ChurchofJesusChristDev/General-Conference-as-Audiobook/raw/main/October%202023%20General%20Conference.m4b)
+Old one-off crawlers, exporters, artwork scripts, and sidecar helpers are no longer supported.
 
-## Download from ChurchOfJesusChrist.org
+## Requirements
 
-1. Go to any of the General Conference listings (from April 1971 to Present). **For example**:
-   - https://www.churchofjesuschrist.org/study/general-conference/2021/10
-   - https://www.churchofjesuschrist.org/study/general-conference/1971/04
-2. Open Chrome's `Menu => More Tools => Developer Tools` \
-   (the JavaScript Console Inspector)
-   <img width="954" alt="Screenshot 2023-02-06 at 6 19 00 AM" src="https://user-images.githubusercontent.com/122831/216982130-fa51eea2-f5d9-4a4b-9ee7-5f6c36c8d158.png">
-3. Copy and Paste this script into the Console:
-   ```js
-   var script = document.createElement('script');
-   script.src="https://churchofjesuschristdev.github.io/General-Conference-to-Audiobook/general-conference-talks.js";
-   document.body.append(script);
-   ```
-   <img width="954" alt="Screenshot 2023-02-06 at 6 22 58 AM" src="https://user-images.githubusercontent.com/122831/216982726-f9056e2b-3daf-4c86-9263-c67bf6968804.png">
-   <img width="954" alt="Screenshot 2023-02-06 at 6 23 48 AM" src="https://user-images.githubusercontent.com/122831/216982733-d165a4c0-2d49-4909-b25d-2dc00cbb82b1.png">
-4. Download each talk by either:
-     - Painstakingly download each talk with the provided links
-     - Or copy and paste the `curl` commands into `Terminal.app`
-   <img width="848" alt="Screenshot 2023-02-06 at 6 12 23 AM" src="https://user-images.githubusercontent.com/122831/216980391-d62e62cc-31b1-4540-b4d3-349d4f4437c0.png">
+- Node.js 20 or newer
+- `ffprobe` only when using `--ffprobe` to validate local media
+- A project-local environment file based on [`example.env`](./example.env)
 
-## Convert to AudioBook
+## Browser workflow
 
-1. Use **AudioBookBinder** from the ***App Store*** to convert from several `mp3`s into a single `m4b`
-   <img width="612" alt="Screenshot 2023-02-06 at 6 03 25 AM" src="https://user-images.githubusercontent.com/122831/216980303-9dc90374-42e1-4d6d-be5f-c7ffa98d9065.png">
-   <img width="612" alt="Screenshot 2023-02-06 at 6 06 35 AM" src="https://user-images.githubusercontent.com/122831/216980326-dc2a5f5c-0f29-4abb-9d31-378ca32d5376.png">
-   <img width="612" alt="Screenshot 2023-02-06 at 6 10 00 AM" src="https://user-images.githubusercontent.com/122831/216980360-f71d9136-4ea5-49c4-b715-66072d7398f5.png">
-2. Check the Church Newsroom if you'd like a nice image to use: \
-   <https://newsroom.churchofjesuschrist.org/article/october-2022-general-conference-news-announcements>
-   <img width="1211" alt="Screenshot 2023-02-06 at 6 14 13 AM" src="https://user-images.githubusercontent.com/122831/216980624-e850101d-5208-4248-8c0b-be0051d2393f.png">
-3. Enjoy with **Bound** (via its Web Uploader) on iOS, or any other audiobook app on any other device
-   <img width="954" alt="Screenshot 2023-02-06 at 6 27 55 AM" src="https://user-images.githubusercontent.com/122831/216983701-ae97f730-65df-472c-b748-57017f499bb5.png">
-   <img width="320" alt="Screenshot 2023-02-06 at 6 28 15 AM" src="https://user-images.githubusercontent.com/122831/216983747-32f916da-bf56-4ad2-bfbc-a6367d5c03f9.jpeg">
+1. Open a General Conference season page.
+2. Open the browser developer console.
+3. Paste [`general-conference-browser.js`](./general-conference-browser.js).
+4. The script reads the current page, fetches same-origin talk pages with six concurrent requests, and adds a banner with download links for:
+   - `general-conference.tsv`
+   - `general-conference.sh`
+   - `general-conference.ps1`
 
-## Also of Interest
+The TSV is suitable for the local downloader after its fields are mapped to the local manifest. The generated shell scripts use the direct audio URLs.
 
-## LibriVox Book of Mormon
+## Local workflow
 
-If you'd like a little more variety in the voice acting of the Book of Mormon, \
-you might enjoy the community recordings put together by LibriVox Volunteers:
-- https://librivox.org/the-book-of-mormon-by-joseph-smith-jr/
+Update metadata and media URLs. By default the range is the most recent four conferences. The newest conference becomes available three days after the first Sunday of its month; use `--refresh` to fetch existing rows again.
 
-## Manuals as AudioBooks
+```sh
+node update-general-conference.mjs --refresh
+```
 
-The church has some official audiobooks for the various manuals and study materials:
-- https://www.churchofjesuschrist.org/media/publications?lang=eng
-- https://www.churchofjesuschrist.org/media-library/audio?lang=mlg
+Set metadata page concurrency with `--concurrency 20` (default) or the `CONFERENCE_CONCURRENCY` environment variable.
+
+Refresh all conferences back to April 1971:
+
+```sh
+node update-general-conference.mjs --all --refresh
+```
+
+The updater discovers page state, audio/video sources, artwork, and English subtitle URLs. It writes resumable `talks.tsv` and `cache/media-links.tsv` catalogs.
+
+Download the default four-conference range, newest first. `GENERAL_CONFERENCE_SHOWS_PATH` is the parent of the Shows root. If podcast values are omitted, the show name and path are reused. Use `--shows-dir` or `--podcast-dir` to override either root.
+
+```sh
+node download-general-conference.mjs \
+  --env ./example.env \
+  --media ./cache/media-links.tsv \
+  --podcast-dir "$HOME/Podcasts/General Conference"
+```
+
+The default downloads talks only, with both video and audio. Use `--primary talks|sessions` to choose the primary record type. Use `--archive` to download both talks and sessions. Use `--all` to select every available conference back to `1971-04`. Use `--audio-only` or `--video-only` to select one media type. Use `--no-podcasts` to disable the configured Podcasts root. `--audio-only` requires Podcasts. Sessions use `SYYYYMME1nn`; talks use `SYYYYMMEnn`. Non-primary records go under `Others/`.
+
+Downloads use visible `.part` files, resume with HTTP range requests, and publish atomically. Completed files are trusted by default; use `--ffprobe` to validate existing and completed media. Markdown sidecars use Defuddle and are fetched only when missing. Show match files are generated only after a successful video download. Audio goes under `Podcasts`; video and its sidecars go under `Shows`.
+
+Configuration:
+
+```sh
+export GENERAL_CONFERENCE_SHOW_NAME="General Conference"
+export GENERAL_CONFERENCE_SHOWS_PATH="$HOME/Videos/"
+export GENERAL_CONFERENCE_PODCAST_NAME="General Conference"
+export GENERAL_CONFERENCE_PODCASTS_PATH="$HOME/Podcasts/"
+export GENERAL_CONFERENCE_VIDEO_QUALITY="720p"
+export GENERAL_CONFERENCE_AUDIO_FORMAT="m4a"
+export GENERAL_CONFERENCE_BRIGHTCOVE_POLICY_KEY=""
+```
+
+## Output layout
+
+```text
+Shows root/
+  tvshow.nfo
+  .plexmatch
+  Season 202604/
+    poster.jpg
+    season.nfo
+    .plexmatch
+    General Conference - S202604E01 - Talk Title/
+      General Conference - S202604E01 - Talk Title - 720p.mp4
+      General Conference - S202604E01 - Talk Title.md
+      General Conference - S202604E01 - Talk Title.vtt
+      episode.nfo
+      .plexmatch
+      poster.jpg
+    Others/
+      General Conference - S202604O01 - Saturday Morning Session/
+        General Conference - S202604O01 - Saturday Morning Session - 720p.mp4
+
+Podcasts root/
+  Season 202604/
+    General Conference - S202604E01 - Talk Title/
+      General Conference - S202604E01 - Talk Title.mp3
+```
+
+## Audiobook conversion
+
+Add one season's audio files to AudioBookBinder and export an `.m4b`, or use the generated Plex/Jellyfin sidecars to keep talks as separate episodes.
+
+## Other resources
+
+- [Pre-converted October 2023 audiobook](https://github.com/ChurchofJesusChristDev/General-Conference-to-Audiobook/raw/main/October%202023%20General%20Conference.m4b)
+- [LibriVox Book of Mormon](https://librivox.org/the-book-of-mormon-by-joseph-smith-jr/)
+- [Church publications and audio](https://www.churchofjesuschrist.org/media/publications?lang=eng)
